@@ -870,6 +870,77 @@ function solveWith(ns, avgLoadOverrides) {
     });
   });
 
+  // === OVERFLOW PASS: unserved cohorts grab leftover capacity (quotas lifted) ===
+  cohortOrder.forEach(co => {
+    if (result[co] >= ns[co]) return;
+    const remaining = ns[co] - result[co];
+    let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+    if (intensive3Mode) avgLoad = 3;
+
+    const courses = cohortCourses[co];
+    const courseIds = Object.keys(courses);
+    if (courseIds.length < Math.max(3, Math.ceil(avgLoad))) return;
+
+    // Rebuild course caps from remaining capacity — NO quota restriction
+    const courseCaps = {};
+    courseIds.forEach(cid => {
+      courseCaps[cid] = courses[cid].reduce((sum, s) => sum + remCap[s.slotIdx], 0);
+    });
+
+    let lo = 0, hi = remaining;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+      else hi = mid - 1;
+    }
+    if (lo === 0) return;
+    result[co] += lo;
+
+    // Water-fill for extra students
+    const courseAllocation = {};
+    const maxPerCourse = {};
+    courseIds.forEach(cid => { maxPerCourse[cid] = Math.min(courseCaps[cid], lo); });
+    const target = Math.ceil(avgLoad * lo);
+    let totalAvail = 0;
+    courseIds.forEach(cid => { totalAvail += maxPerCourse[cid]; });
+    if (totalAvail <= target) {
+      courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
+    } else {
+      courseIds.forEach(cid => { courseAllocation[cid] = 0; });
+      let rem = target;
+      while (rem > 0) {
+        let bestCid = null, bestVal = Infinity;
+        courseIds.forEach(cid => {
+          if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
+            bestVal = courseAllocation[cid]; bestCid = cid;
+          }
+        });
+        if (bestCid === null) break;
+        const level = courseAllocation[bestCid];
+        const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
+        atLevel.forEach(cid => { if (rem > 0) { courseAllocation[cid]++; rem--; } });
+      }
+    }
+
+    // Merge into cohortAlloc
+    courseIds.forEach(cid => {
+      cohortAlloc[co][cid] = (cohortAlloc[co][cid] || 0) + (courseAllocation[cid] || 0);
+    });
+
+    // Consume remaining capacity
+    courseIds.forEach(cid => {
+      let toAlloc = courseAllocation[cid] || 0;
+      const sortedSlots = [...courses[cid]].sort((a, b) => remCap[b.slotIdx] - remCap[a.slotIdx]);
+      sortedSlots.forEach(si => {
+        const avail = remCap[si.slotIdx];
+        const give = Math.min(toAlloc, avail);
+        alloc[si.slotIdx][co] += give;
+        remCap[si.slotIdx] -= give;
+        toAlloc -= give;
+      });
+    });
+  });
+
   return { ns, result, alloc, cohortAlloc };
 }
 
