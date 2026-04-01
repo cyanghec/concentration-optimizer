@@ -39,7 +39,7 @@ Enrollment is **sequential**: S26 enrolls first, then J27 16mo, then J27 12mo. L
 | $Q_{s,c} \in \mathbb{Z}_{\geq 0} \cup \{\infty\}$ | Quota: max seats cohort $c$ may use in slot $s$. $Q_{s,c} = 0$ if $s \notin \mathcal{S}_c$ |
 | $N_c$ | Size of cohort $c$ (students in concentration) |
 | $L_c$ | Average course load for cohort $c$ (courses needed to qualify) |
-| $R_s$ | Seats reserved for J27\_12mo in slot $s$ (governance lever, default 0) |
+| $R_s \geq 0$ | Seats reserved for J27\_12mo in slot $s$ (governance lever, default 0) |
 
 ### Derived Quantities
 
@@ -53,7 +53,13 @@ $$\widetilde{\text{Cap}}_s = \Big\lfloor \overline{\text{Cap}}_s \cdot \text{Pop
 
 **Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
 
-$$\bar{Q}_{s,c} = \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big)$$
+$$\bar{Q}_{s,c} = \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s - R_{s,c}\Big)$$
+
+where $R_{s,c}$ is the reservation penalty:
+
+$$R_{s,c} = \begin{cases} 0 & \text{if } c = \text{J27\_12mo} \\ R_s & \text{otherwise} \end{cases}$$
+
+Intuition: if a slot has 50 effective seats and 12 are reserved for J27\_12mo, then S26 and J27\_16mo see a quota capped at 38. J27\_12mo sees the full 50.
 
 ### Decision Variables
 
@@ -90,9 +96,7 @@ $$\sum_{s \in \mathcal{S}_c} x_{s,c} \;\geq\; \lceil L_c \cdot n_c \rceil \qquad
 
 $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$$
 
-**6. Seat reservation** (governance lever): For non-J12 cohorts, reserved seats are excluded:
-
-$$x_{s,c} \;\leq\; \widetilde{\text{Cap}}_s - R_s \qquad \forall\; s \in \mathcal{S}_c,\; c \neq \text{J27\_12mo}$$
+Note: Seat reservation is handled within the quota $\bar{Q}_{s,c}$ — no separate constraint needed.
 
 ### Sequential Enrollment Extension
 
@@ -104,7 +108,7 @@ This is modeled as a **sequence of LPs**, one per cohort in enrollment order $\s
 
 $$\max \; n_{c_t}$$
 
-subject to constraints (1)–(6) for cohort $c_t$ only, with capacity reduced by prior allocations:
+subject to constraints (1)–(5) for cohort $c_t$ only, with capacity reduced by prior allocations:
 
 $$\widetilde{\text{Cap}}_s^{(t)} = \widetilde{\text{Cap}}_s - \sum_{\tau < t} x_{s, c_\tau}^* \qquad \forall\; s \in \mathcal{S}$$
 
@@ -120,7 +124,7 @@ $$P^* = \max \; P$$
 
 $$\text{subject to:} \quad n_c \;\geq\; \Big\lfloor \tfrac{P}{100} \cdot N_c \Big\rfloor \qquad \forall\; c \in \mathcal{C}$$
 
-plus all constraints (1)–(6).
+plus all constraints (1)–(5).
 
 Equivalently: each cohort is **capped at its fair-share floor** $\lfloor \frac{P}{100} \cdot N_c \rfloor$, preventing early cohorts from consuming capacity that later cohorts need.
 
