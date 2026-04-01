@@ -39,7 +39,7 @@ Enrollment is **sequential**: S26 enrolls first, then J27 16mo, then J27 12mo. L
 | $Q_{s,c} \in \mathbb{Z}_{\geq 0} \cup \{\infty\}$ | Quota: max seats cohort $c$ may use in slot $s$. $Q_{s,c} = 0$ if $s \notin \mathcal{S}_c$ |
 | $N_c$ | Size of cohort $c$ (students in concentration) |
 | $L_c$ | Average course load for cohort $c$ (courses needed to qualify) |
-| $R_s \geq 0$ | Seats reserved for J27\_12mo in slot $s$ (governance lever, default 0) |
+| $\alpha_c \in [0, 1]$ | Quota percentage for cohort $c$ (governance lever; $\sum_c \alpha_c = 1$) |
 
 ### Derived Quantities
 
@@ -53,13 +53,9 @@ $$\widetilde{\text{Cap}}_s = \Big\lfloor \overline{\text{Cap}}_s \cdot \text{Pop
 
 **Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
 
-$$\bar{Q}_{s,c} = \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s - R_{s,c}\Big)$$
+$$\bar{Q}_{s,c} = \begin{cases} 0 & \text{if } Q_{s,c} = 0 \text{ (cohort blocked from slot)} \\ \min\!\Big(Q_{s,c},\; \lfloor \widetilde{\text{Cap}}_s \cdot \alpha_c \rfloor\Big) & \text{if quota governance is active} \\ \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big) & \text{otherwise (no quota limit)} \end{cases}$$
 
-where $R_{s,c}$ is the reservation penalty:
-
-$$R_{s,c} = \begin{cases} 0 & \text{if } c = \text{J27\_12mo} \\ R_s & \text{otherwise} \end{cases}$$
-
-Intuition: if a slot has 50 effective seats and 12 are reserved for J27\_12mo, then S26 and J27\_16mo see a quota capped at 38. J27\_12mo sees the full 50.
+Intuition: if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27\_16mo up to 12, and J27\_12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
 
 ### Decision Variables
 
@@ -96,7 +92,7 @@ $$\sum_{s \in \mathcal{S}_c} x_{s,c} \;\geq\; \lceil L_c \cdot n_c \rceil \qquad
 
 $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$$
 
-Note: Seat reservation is handled within the quota $\bar{Q}_{s,c}$ — no separate constraint needed.
+Note: Cohort quotas are handled within $\bar{Q}_{s,c}$ — no separate constraint needed. The quota percentages $\alpha_c$ are tunable in the tool (default: S26 50%, J16 25%, J12 25%).
 
 ### Sequential Enrollment Extension
 
@@ -200,7 +196,7 @@ Move courses to periods that improve J27 12mo access:
 | Mechanism | Effect | Impact under Perfect Storm |
 |-----------|--------|---------------------------|
 | **Mandatory Course** | 1 required course, avg load drops by 1 | Reduces total seat demand by ~29 enrollments |
-| **Reserve 12 seats/course** | Holds seats in J12-accessible slots | J12 jumps from 0 to **24/29 (83%)** |
+| **Cohort Quotas** (S26: 50%, J16: 25%, J12: 25%) | Each cohort gets a guaranteed share of each slot's capacity | J12 jumps from 0 to **15/29 (52%)** — order-independent |
 | **Cohort Caps** (S26: 90, J12: 25) | Limits concentration enrollment | Reduces total demand from 184 to 160 |
 | **Qualify via 3 Intensives** | Qualification bar drops from ~3.7 to 3 courses | Total served rises from 125 to 142 |
 
@@ -209,9 +205,11 @@ Move courses to periods that improve J27 12mo access:
 | Scenario | Total Served | S26 | J12 | J16 |
 |----------|-------------|-----|-----|-----|
 | No governance | 123/184 (67%) | 78 | 0 | 45 |
-| + Qualify via 3 Intensives | 142/184 (77%) | 97 | 0 | 45 |
-| + 3 Int. + Reserve 12 | 142/184 (77%) | 73 | **24** | 45 |
-| + All governance | 142/160 (89%) | 73 | **24** | 45 |
+| + Quotas (50/25/25) | 87/184 (47%) | 39 | **15** | 33 |
+| + Quotas + 3 Intensives | — | — | — | — |
+| + All governance | — | — | — | — |
+
+*Note: Exact numbers depend on quota percentages, which are tunable in the tool.*
 
 ### The Structural Argument
 
@@ -220,6 +218,6 @@ The root cause is **format asymmetry**: J27 12mo has zero elective periods. Thei
 - Every cohort can qualify through intensive slots alone
 - 7 of 9 courses can be offered as intensive
 - The 2 elective-only courses (TESP, DDDM) become enrichment, not barriers
-- Seat reservation ensures J12 actually gets intensive capacity
+- Cohort quotas ensure J12 actually gets intensive capacity
 
 This reframing — intensives as core, electives as extras — resolves the structural inequity without reducing course breadth.

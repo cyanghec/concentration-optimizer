@@ -111,9 +111,18 @@
     <div style="font-size:11px;font-weight:600;color:#059669;margin:10px 0 6px;">Governance <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
     <div class="scenario-bar" id="govBar">
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="mandatory" onclick="toggleGov(this)">Mandatory Course</button>
-      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="reserve" onclick="toggleGov(this)">Reserve 12 seats/course for J27 12mo</button>
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="quotas" onclick="toggleGov(this)">Cohort Quotas</button>
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="caps" onclick="toggleGov(this)">Cohort Caps (S26: 90, J27 12mo: 25)</button>
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="intensive3" onclick="toggleGov(this)">Qualify via 3 Intensives</button>
+    </div>
+    <div id="quotaPanel" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+      <div style="font-size:11px;font-weight:600;color:#059669;margin-bottom:6px;">Quota % per cohort <span style="font-weight:400;color:#888;">(share of each slot's effective capacity)</span></div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:12px;">S26: <input class="input-sm" type="number" id="quotaPct_S26" value="50" min="0" max="100" onchange="applyCombo()">%</label>
+        <label style="font-size:12px;">J27 16mo: <input class="input-sm" type="number" id="quotaPct_J27_16" value="25" min="0" max="100" onchange="applyCombo()">%</label>
+        <label style="font-size:12px;">J27 12mo: <input class="input-sm" type="number" id="quotaPct_J27_12" value="25" min="0" max="100" onchange="applyCombo()">%</label>
+        <span id="quotaPctTotal" style="font-size:11px;color:#888;"></span>
+      </div>
     </div>
     <div id="comboLabel" style="font-size:11px;color:#6b7280;margin-top:4px;"></div>
   </div>
@@ -585,7 +594,7 @@ function setLoadInputs(co, n3, n4, n5, n6) {
 // ===== COMPOSABLE SCENARIO STATE =====
 let activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
 let activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false };
-let activeGov = { mandatory: false, reserve: false, caps: false, intensive3: false };
+let activeGov = { mandatory: false, quotas: false, caps: false, intensive3: false };
 
 function toggleStress(btn) {
   const stress = btn.dataset.stress;
@@ -605,6 +614,9 @@ function toggleGov(btn) {
   const gov = btn.dataset.gov;
   activeGov[gov] = !activeGov[gov];
   btn.classList.toggle('toggle-on', activeGov[gov]);
+  if (gov === 'quotas') {
+    document.getElementById('quotaPanel').style.display = activeGov.quotas ? 'block' : 'none';
+  }
   applyCombo();
 }
 
@@ -613,7 +625,6 @@ function applyCombo() {
 
   // Reset governance
   mandatoryMode = false;
-  reserveJ12 = 0;
   intensive3Mode = false;
 
   // Reset per-course popularity
@@ -661,7 +672,6 @@ function applyCombo() {
 
   // Apply governance
   if (activeGov.mandatory) mandatoryMode = true;
-  if (activeGov.reserve) reserveJ12 = 12;
   if (activeGov.intensive3) intensive3Mode = true;
   if (activeGov.caps) {
     // Cap concentration count: S26 ≤ 90, J27 12mo ≤ 25, J27 16mo uncapped
@@ -692,12 +702,20 @@ function applyCombo() {
     });
   }
 
-  // Fill reserved seats into J27 12mo quota column
-  if (reserveJ12 > 0) {
+  // Apply cohort quotas: set per-slot quota as % of effective capacity
+  if (activeGov.quotas) {
+    const pctS26 = (+document.getElementById('quotaPct_S26').value || 0) / 100;
+    const pctJ16 = (+document.getElementById('quotaPct_J27_16').value || 0) / 100;
+    const pctJ12 = (+document.getElementById('quotaPct_J27_12').value || 0) / 100;
+    const totalPct = Math.round((pctS26 + pctJ16 + pctJ12) * 100);
+    document.getElementById('quotaPctTotal').textContent = `Total: ${totalPct}%` + (totalPct !== 100 ? ' ⚠️' : ' ✓');
+    document.getElementById('quotaPctTotal').style.color = totalPct === 100 ? '#16a34a' : '#dc2626';
     slots.forEach(s => {
-      if (s.q.J27_12 === null || s.q.J27_12 > 0) {
-        s.q.J27_12 = reserveJ12;
-      }
+      const ec = effCap(s);
+      // Only set quota for cohorts that have access (quota !== 0)
+      if (s.q.S26 !== 0) s.q.S26 = Math.floor(ec * pctS26);
+      if (s.q.J27_16 !== 0) s.q.J27_16 = Math.floor(ec * pctJ16);
+      if (s.q.J27_12 !== 0) s.q.J27_12 = Math.floor(ec * pctJ12);
     });
   }
 
@@ -710,7 +728,12 @@ function applyCombo() {
   const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', aifu_feb:'AIFU+Feb' };
   Object.keys(activeFixes).forEach(k => { if (activeFixes[k]) parts.push(fixLabels[k]); });
   if (activeGov.mandatory) parts.push('Mandatory');
-  if (activeGov.reserve) parts.push('Reserve 12');
+  if (activeGov.quotas) {
+    const pS = document.getElementById('quotaPct_S26').value;
+    const p16 = document.getElementById('quotaPct_J27_16').value;
+    const p12 = document.getElementById('quotaPct_J27_12').value;
+    parts.push(`Quotas (S26:${pS}%, J16:${p16}%, J12:${p12}%)`);
+  }
   if (activeGov.caps) parts.push('Caps (S26:90, J12:25)');
   if (activeGov.intensive3) parts.push('3 Intensives');
   document.getElementById('comboLabel').textContent = parts.length > 1 ? 'Active: ' + parts.join(' + ') : '';
@@ -726,7 +749,8 @@ function resetScenario() {
   // Reset all toggles
   activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
   activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false };
-  activeGov = { mandatory: false, reserve: false, caps: false, intensive3: false };
+  activeGov = { mandatory: false, quotas: false, caps: false, intensive3: false };
+  document.getElementById('quotaPanel').style.display = 'none';
   document.querySelectorAll('#stressBar .scenario-btn, #fixBar .scenario-btn, #govBar .scenario-btn').forEach(b => b.classList.remove('toggle-on'));
   applyCombo();
 }
@@ -759,23 +783,6 @@ function solveWith(ns, avgLoadOverrides) {
     return o;
   });
 
-  // Seat reservation: reduce capacity available to non-J12 cohorts in J12-accessible slots
-  const isSequential = true;
-  const reservedCap = slots.map(() => 0);
-  if (reserveJ12 > 0 && isSequential) {
-    // For each course J12 can access, reserve seats across its slots
-    const j12Courses = cohortCourses['J27_12'] || {};
-    Object.keys(j12Courses).forEach(cid => {
-      let toReserve = reserveJ12;
-      j12Courses[cid].forEach(si => {
-        const avail = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx]['J27_12']);
-        const res = Math.min(toReserve, avail);
-        reservedCap[si.slotIdx] = res;
-        toReserve -= res;
-      });
-    });
-  }
-
   const alloc = slots.map(() => { const o = {}; COHORTS.forEach(co => o[co] = 0); return o; });
   const result = {};
   const cohortAlloc = {};
@@ -799,10 +806,7 @@ function solveWith(ns, avgLoadOverrides) {
     const courseCaps = {};
     courseIds.forEach(cid => {
       courseCaps[cid] = courses[cid].reduce((sum, s) => {
-        const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
-        // Non-J12 cohorts see reduced capacity in reserved slots
-        const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
-        return sum + Math.max(0, cap - reserve);
+        return sum + Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
       }, 0);
     });
 
@@ -846,14 +850,12 @@ function solveWith(ns, avgLoadOverrides) {
     courseIds.forEach(cid => {
       let toAlloc = courseAllocation[cid] || 0;
       const sortedSlots = [...courses[cid]].sort((a, b) => {
-        const capA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]) - ((co !== 'J27_12') ? reservedCap[a.slotIdx] : 0);
-        const capB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]) - ((co !== 'J27_12') ? reservedCap[b.slotIdx] : 0);
+        const capA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+        const capB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
         return capB - capA;
       });
       sortedSlots.forEach(si => {
-        const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
-        const avail = Math.max(0, raw - reserve);
+        const avail = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
         const give = Math.min(toAlloc, avail);
         alloc[si.slotIdx][co] += give;
         remCap[si.slotIdx] -= give;
@@ -863,7 +865,7 @@ function solveWith(ns, avgLoadOverrides) {
     });
   });
 
-  return { ns, result, alloc, cohortAlloc, reserveJ12: reserveJ12 };
+  return { ns, result, alloc, cohortAlloc };
 }
 
 function canServeLoad(n, courseIds, courseCaps, avgLoad) {
@@ -873,7 +875,6 @@ function canServeLoad(n, courseIds, courseCaps, avgLoad) {
 }
 
 let mandatoryMode = false;
-let reserveJ12 = 0; // seats reserved per course for J27 12mo
 let intensive3Mode = false; // qualify via 3 intensives only
 
 function getMandatoryOverrides() {
@@ -935,22 +936,6 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
     return o;
   });
 
-  // Seat reservation for solveWithFloor
-  const isSeqF = true;
-  const reservedCapF = slots.map(() => 0);
-  if (reserveJ12 > 0 && isSeqF) {
-    const j12C = cohortCourses['J27_12'] || {};
-    Object.keys(j12C).forEach(cid => {
-      let toRes = reserveJ12;
-      j12C[cid].forEach(si => {
-        const av = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx]['J27_12']);
-        const r = Math.min(toRes, av);
-        reservedCapF[si.slotIdx] = r;
-        toRes -= r;
-      });
-    });
-  }
-
   const alloc = slots.map(() => { const o = {}; COHORTS.forEach(co => o[co] = 0); return o; });
   const result = {};
   const cohortAlloc = {};
@@ -977,9 +962,7 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
     const courseCaps = {};
     courseIds.forEach(cid => {
       courseCaps[cid] = courses[cid].reduce((sum, s) => {
-        const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCapF[s.slotIdx] : 0;
-        return sum + Math.max(0, cap - reserve);
+        return sum + Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
       }, 0);
     });
 
@@ -1027,14 +1010,12 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
     courseIds.forEach(cid => {
       let toAlloc = courseAllocation[cid] || 0;
       const sortedSlots = [...courses[cid]].sort((a, b) => {
-        const capA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]) - ((co !== 'J27_12') ? reservedCapF[a.slotIdx] : 0);
-        const capB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]) - ((co !== 'J27_12') ? reservedCapF[b.slotIdx] : 0);
+        const capA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+        const capB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
         return capB - capA;
       });
       sortedSlots.forEach(si => {
-        const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCapF[si.slotIdx] : 0;
-        const avail = Math.max(0, raw - reserve);
+        const avail = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
         const give = Math.min(toAlloc, avail);
         alloc[si.slotIdx][co] += give;
         remCap[si.slotIdx] -= give;
@@ -1138,7 +1119,12 @@ function displayResults(res) {
 
   const govNotes = [];
   if (res.mandatory) govNotes.push('1 mandatory course (load -1)');
-  if (res.reserveJ12 > 0) govNotes.push(`${res.reserveJ12} seats/course reserved for J27 12mo`);
+  if (activeGov.quotas) {
+    const pS = document.getElementById('quotaPct_S26').value;
+    const p16 = document.getElementById('quotaPct_J27_16').value;
+    const p12 = document.getElementById('quotaPct_J27_12').value;
+    govNotes.push(`Quotas: S26 ${pS}%, J16 ${p16}%, J12 ${p12}%`);
+  }
   if (res.intensive3) govNotes.push('Qualify via 3 intensives');
   const mandNote = govNotes.length > 0 ? `<div style="font-size:12px;margin-top:4px;">Governance: ${govNotes.join(' + ')}</div>` : '';
   document.getElementById('totalBar').innerHTML = `<div class="total-bar ${totalZ >= totalN ? 'good' : 'bad'}">
