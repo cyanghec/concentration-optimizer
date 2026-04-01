@@ -712,12 +712,14 @@ function applyCombo() {
     document.getElementById('quotaPctTotal').style.color = totalPct === 100 ? '#16a34a' : '#dc2626';
     slots.forEach(s => {
       const ec = effCap(s);
-      // Only apply quotas when all 3 cohorts have access (shared slots)
-      const allOpen = s.q.S26 !== 0 && s.q.J27_12 !== 0 && s.q.J27_16 !== 0;
-      if (allOpen) {
-        s.q.S26 = Math.floor(ec * pctS26);
-        s.q.J27_12 = Math.floor(ec * pctJ12);
-        s.q.J27_16 = Math.floor(ec * pctJ16);
+      const pcts = { S26: pctS26, J27_12: pctJ12, J27_16: pctJ16 };
+      const openCohorts = COHORTS.filter(co => s.q[co] !== 0);
+      if (openCohorts.length >= 2) {
+        // Normalize percentages among open cohorts so blocked cohort's share redistributes
+        const totalOpen = openCohorts.reduce((sum, co) => sum + pcts[co], 0);
+        openCohorts.forEach(co => {
+          s.q[co] = Math.floor(ec * pcts[co] / totalOpen);
+        });
       }
     });
   }
