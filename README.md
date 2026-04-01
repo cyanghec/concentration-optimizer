@@ -18,60 +18,113 @@ Enrollment is **sequential**: S26 enrolls first, then J27 16mo, then J27 12mo. L
 
 ## How the Math Works
 
-### Core Concepts
+### Sets & Indices
 
-**Effective Capacity** of a slot = raw seat capacity minus seats already consumed by previous MBA cohorts (non-concentration students):
+| Symbol | Definition |
+|--------|-----------|
+| $\mathcal{C}$ | Set of cohorts: {S26, J27\_16mo, J27\_12mo} |
+| $\mathcal{K}$ | Set of courses: {UCAI, PIDT, AIFU, MAIR, TESP, DDDM, AIBDM, SCT, GAIM} |
+| $\mathcal{P}$ | Set of periods: {Dec26, Jan-Mar27, Feb27, Apr-Jun27, Apr27, Oct27, Dec27, Jan-Mar28, Feb28, Apr28} |
+| $\mathcal{S}$ | Set of slots: $\mathcal{S} \subseteq \mathcal{K} \times \mathcal{P}$, each slot $s = (k, p)$ is a course $k$ offered in period $p$ |
+| $\mathcal{S}_c \subseteq \mathcal{S}$ | Slots accessible to cohort $c$ (determined by timeline and format) |
+| $\mathcal{K}_c \subseteq \mathcal{K}$ | Courses accessible to cohort $c$: $\mathcal{K}_c = \{k : \exists\, p \text{ s.t. } (k,p) \in \mathcal{S}_c\}$ |
 
-```
-effCap(slot) = max(0, slot.cap - slot.prev)
-```
+### Parameters
 
-**Course Popularity** scales effective capacity to model uneven demand:
+| Symbol | Definition |
+|--------|-----------|
+| $\text{Cap}_s$ | Raw seat capacity of slot $s$ |
+| $\text{Prev}_s$ | Seats already consumed by non-concentration students (prior MBA cohorts) |
+| $\text{Pop}_k \in [0, 1]$ | Popularity factor for course $k$ (scales effective capacity) |
+| $Q_{s,c} \in \mathbb{Z}_{\geq 0} \cup \{\infty\}$ | Quota: max seats cohort $c$ may use in slot $s$. $Q_{s,c} = 0$ if $s \notin \mathcal{S}_c$ |
+| $N_c$ | Size of cohort $c$ (students in concentration) |
+| $L_c$ | Average course load for cohort $c$ (courses needed to qualify) |
+| $R_s$ | Seats reserved for J27\_12mo in slot $s$ (governance lever, default 0) |
 
-```
-effCapPref(slot) = floor(effCap(slot) * coursePop[slot.course] / 100)
-```
+### Derived Quantities
 
-**Quota** limits how many seats a cohort can use in a slot. `null` means unlimited access; `0` means blocked:
+**Effective capacity** (seats available to concentration students):
 
-```
-getQuota(slot, cohort) =
-  if quota is null: effCap(slot)
-  else: min(quota, effCap(slot))
-```
+$$\overline{\text{Cap}}_s = \max\!\Big(0,\; \text{Cap}_s - \text{Prev}_s\Big)$$
 
-### The Solver (Greedy with Binary Search)
+**Popularity-adjusted capacity**:
 
-For each cohort in enrollment order (S26 -> J27 16mo -> J27 12mo):
+$$\widetilde{\text{Cap}}_s = \Big\lfloor \overline{\text{Cap}}_s \cdot \text{Pop}_k \Big\rfloor \quad \text{where } s = (k, p)$$
 
-1. **Build course map**: For each course, collect all accessible slots (quota > 0) and their remaining capacity after previous cohorts consumed seats.
+**Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
 
-2. **Compute per-course capacity**: Sum remaining capacity across all slots for that course, minus any reserved seats (for non-J12 cohorts).
+$$\bar{Q}_{s,c} = \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big)$$
 
-3. **Binary search for max students**: Find the largest number `N` where the total available seat-enrollments across all courses can serve `N` students at their average course load:
+### Decision Variables
 
-```
-canServeLoad(N, courses, caps, avgLoad):
-  totalCap = sum of min(cap[course], N) for each course
-  return totalCap >= ceil(avgLoad * N)
-```
+| Variable | Domain | Meaning |
+|----------|--------|---------|
+| $x_{s,c} \in \mathbb{Z}_{\geq 0}$ | for each $s \in \mathcal{S}_c,\; c \in \mathcal{C}$ | Seats allocated to cohort $c$ in slot $s$ |
+| $n_c \in \mathbb{Z}_{\geq 0}$ | for each $c \in \mathcal{C}$ | Number of students served in cohort $c$ |
 
-The `min(cap, N)` reflects that no more than N students can use any single course.
+### Objective
 
-4. **Water-fill allocation**: Distribute `ceil(avgLoad * N)` seat-enrollments across courses, filling the lowest-allocated course first (like pouring water into connected vessels). This ensures even distribution.
+**Maximize total students served:**
 
-5. **Consume capacity**: Deduct allocated seats from remaining slot capacity before the next cohort enrolls.
+$$\max \sum_{c \in \mathcal{C}} n_c$$
+
+### Constraints
+
+**1. Capacity**: Total allocation across all cohorts in a slot cannot exceed adjusted capacity:
+
+$$\sum_{c \in \mathcal{C}} x_{s,c} \;\leq\; \widetilde{\text{Cap}}_s \qquad \forall\; s \in \mathcal{S}$$
+
+**2. Quota**: Each cohort respects its per-slot quota:
+
+$$x_{s,c} \;\leq\; \bar{Q}_{s,c} \qquad \forall\; s \in \mathcal{S},\; c \in \mathcal{C}$$
+
+**3. Cohort size**: Cannot serve more students than are in the cohort:
+
+$$n_c \;\leq\; N_c \qquad \forall\; c \in \mathcal{C}$$
+
+**4. Course load**: Each cohort's total seat-enrollments must meet the average load requirement:
+
+$$\sum_{s \in \mathcal{S}_c} x_{s,c} \;\geq\; \lceil L_c \cdot n_c \rceil \qquad \forall\; c \in \mathcal{C}$$
+
+**5. Per-course cap**: No more students in a course than are served (a student takes a course at most once):
+
+$$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$$
+
+**6. Seat reservation** (governance lever): For non-J12 cohorts, reserved seats are excluded:
+
+$$x_{s,c} \;\leq\; \widetilde{\text{Cap}}_s - R_s \qquad \forall\; s \in \mathcal{S}_c,\; c \neq \text{J27\_12mo}$$
+
+### Sequential Enrollment Extension
+
+The pure LP above assumes simultaneous optimization. In practice, enrollment is **sequential** — S26 enrolls first, then J27\_16mo, then J27\_12mo. Each later cohort sees only the residual capacity.
+
+This is modeled as a **sequence of LPs**, one per cohort in enrollment order $\sigma = (c_1, c_2, c_3)$:
+
+**Stage $t$** (for cohort $c_t$): Solve
+
+$$\max \; n_{c_t}$$
+
+subject to constraints (1)–(6) for cohort $c_t$ only, with capacity reduced by prior allocations:
+
+$$\widetilde{\text{Cap}}_s^{(t)} = \widetilde{\text{Cap}}_s - \sum_{\tau < t} x_{s, c_\tau}^* \qquad \forall\; s \in \mathcal{S}$$
+
+where $x_{s, c_\tau}^*$ are the fixed allocations from stages $\tau < t$.
+
+**Implementation note**: The tool solves each stage via binary search over $n_{c_t}$ with water-fill allocation (greedy LP relaxation), rather than a general LP solver.
 
 ### Fairness Mode (Equalize)
 
-Instead of maximizing total students served, find the highest completion percentage `P%` achievable by **all** cohorts simultaneously:
+Instead of maximizing total served, find the highest **completion percentage** $P^*$ achievable by all cohorts simultaneously:
 
-1. Binary search over `P` from 100% down to 0%.
-2. For each `P`, set each cohort's floor = `round(cohortSize * P / 100)`.
-3. Run the solver with each cohort **capped at its floor** (not at maximum). This prevents early cohorts from consuming capacity that later cohorts need.
-4. If all floors are feasible, `P` is achievable.
+$$P^* = \max \; P$$
 
-This reveals the equity cost: total served drops, but no cohort is left behind.
+$$\text{subject to:} \quad n_c \;\geq\; \Big\lfloor \tfrac{P}{100} \cdot N_c \Big\rfloor \qquad \forall\; c \in \mathcal{C}$$
+
+plus all constraints (1)–(6).
+
+Equivalently: each cohort is **capped at its fair-share floor** $\lfloor \frac{P}{100} \cdot N_c \rfloor$, preventing early cohorts from consuming capacity that later cohorts need.
+
+The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequential solver with each cohort capped at its floor and checks feasibility.
 
 ## The 9 Courses
 
