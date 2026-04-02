@@ -106,16 +106,14 @@
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="mair" onclick="toggleFix(this)">MAIR: Jan-Mar &rarr; Oct</button>
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="aibdm" onclick="toggleFix(this)">AIBDM: Apr-Jun &rarr; Oct</button>
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="ucai" onclick="toggleFix(this)">UCAI: Oct &rarr; Jan-Mar</button>
-      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="aifu_feb" onclick="toggleFix(this)">AIFU: + add Feb intensive</button>
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="sct" onclick="toggleFix(this)">SCT: + add Apr intensive</button>
     </div>
     <div style="font-size:11px;font-weight:600;color:#059669;margin:10px 0 6px;">Governance <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
     <div class="scenario-bar" id="govBar">
-      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="mandatory" onclick="toggleGov(this)">Mandatory Course</button>
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="reserve" onclick="toggleGov(this)">Reserve Seats for J27 12mo</button>
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="quotas" onclick="toggleGov(this)">Cohort Quotas</button>
       <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="caps" onclick="toggleGov(this)">Cohort Caps (S26: 90, J27 12mo: 25)</button>
-      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="intensive3" onclick="toggleGov(this)">Qualify via 3 Intensives</button>
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="intensive2" onclick="toggleGov(this)">Qualify via 2 Courses</button>
     </div>
     <div id="reservePanel" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
       <div style="font-size:11px;font-weight:600;color:#059669;margin-bottom:6px;">Seats reserved per course for J27 12mo <span style="font-weight:400;color:#888;">(subtracted from S26 & J16 capacity in shared slots)</span></div>
@@ -285,6 +283,28 @@
       </tr></thead><tbody id="sensBody"></tbody></table>
     </div>
   </div>
+
+  <div class="panel" id="reserveSensPanel" style="display:none;">
+    <h2>Sensitivity Analysis — Reserve Seats for J27 12mo</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">
+      Sweeps reserved seats from 0 to 25. Shows the tradeoff between J12 access and S26 impact.
+    </p>
+    <div id="reserveThresholdBox"></div>
+    <div style="overflow-x:auto; margin-top: 12px;">
+      <table class="sens-table"><thead><tr>
+        <th>Reserved</th>
+        <th>S26 served</th>
+        <th>J27 12mo served</th>
+        <th>J27 16mo served</th>
+        <th>Total served</th>
+        <th>Total needed</th>
+        <th>S26 Δ</th>
+        <th>J12 Δ</th>
+        <th>Net Δ</th>
+        <th>Status</th>
+      </tr></thead><tbody id="reserveSensBody"></tbody></table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -311,19 +331,19 @@ const PERIODS = [
   { id:'janmar27', label:'Jan-Mar 27', type:'elective', dates:'Jan 4-Mar 26, 27',
     avail:{S26:null, J27_12:0, J27_16:0} },
   { id:'feb27', label:'Feb 27', type:'intensive', dates:'Feb 15-17, 27',
-    avail:{S26:null, J27_12:null, J27_16:0} },
+    avail:{S26:null, J27_12:0, J27_16:0} },
   { id:'aprjun27', label:'Apr-Jun 27', type:'elective', dates:'Apr 5-Jun 25, 27',
     avail:{S26:null, J27_12:0, J27_16:0} },
   { id:'apr27', label:'Apr 27', type:'intensive', dates:'Apr 5-9, 27',
     avail:{S26:null, J27_12:null, J27_16:null} },
   { id:'oct27', label:'Oct 27', type:'intensive', dates:'Oct 19-21, 27',
-    avail:{S26:null, J27_12:null, J27_16:null} },
+    avail:{S26:0, J27_12:null, J27_16:null} },
   { id:'dec27', label:'Dec 27', type:'intensive', dates:'Dec 14-18, 27',
     avail:{S26:null, J27_12:null, J27_16:null} },
   { id:'janmar28', label:'Jan-Mar 28', type:'elective', dates:'Jan 4-Mar 26, 28',
     avail:{S26:0, J27_12:0, J27_16:null} },
   { id:'feb28', label:'Feb 28', type:'intensive', dates:'Feb 15-17, 28',
-    avail:{S26:0, J27_12:0, J27_16:null} },
+    avail:{S26:0, J27_12:0, J27_16:0} },
   { id:'apr28', label:'Apr 28', type:'intensive', dates:'Apr 5-9, 28',
     avail:{S26:0, J27_12:0, J27_16:null} },
   { id:'aprjun28', label:'Apr-Jun 28', type:'elective', dates:'Apr 5-Jun 25, 28',
@@ -599,8 +619,8 @@ function setLoadInputs(co, n3, n4, n5, n6) {
 
 // ===== COMPOSABLE SCENARIO STATE =====
 let activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
-let activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false, sct: false };
-let activeGov = { mandatory: false, reserve: false, quotas: false, caps: false, intensive3: false };
+let activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
+let activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
 
 function toggleStress(btn) {
   const stress = btn.dataset.stress;
@@ -633,9 +653,9 @@ function applyCombo() {
   initCalendar();
 
   // Reset governance
-  mandatoryMode = false;
+
   reserveJ12 = 0;
-  intensive3Mode = false;
+  intensive2Mode = false;
 
   // Reset per-course popularity
   COURSES.forEach(c => { coursePop[c.id] = DEFAULT_POP[c.id] || 100; });
@@ -675,19 +695,16 @@ function applyCombo() {
     calendar.ucai.oct26 = false; calendar.ucai.janmar27 = true;
     calendar.ucai.oct27 = false; calendar.ucai.janmar28 = true;
   }
-  if (activeFixes.aifu_feb) {
-    calendar.aifu.feb27 = true;
-    calendar.aifu.feb28 = true;
-  }
+
   if (activeFixes.sct) {
     calendar.sct.apr27 = true;
     calendar.sct.apr28 = true;
   }
 
   // Apply governance
-  if (activeGov.mandatory) mandatoryMode = true;
+
   if (activeGov.reserve) reserveJ12 = +document.getElementById('reserveSeats').value || 12;
-  if (activeGov.intensive3) intensive3Mode = true;
+  if (activeGov.intensive2) intensive2Mode = true;
   if (activeGov.caps) {
     // Cap concentration count: S26 ≤ 90, J27 12mo ≤ 25, J27 16mo uncapped
     const COHORT_CAPS = { S26: 90, J27_12: 25 };
@@ -745,9 +762,9 @@ function applyCombo() {
   const anyStress = Object.values(activeStress).some(v => v);
   if (!anyStress) parts.push('Current Setup');
   Object.keys(activeStress).forEach(k => { if (activeStress[k]) parts.push(stressLabels[k]); });
-  const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', aifu_feb:'AIFU+Feb', sct:'+SCT Apr' };
+  const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', sct:'+SCT Apr' };
   Object.keys(activeFixes).forEach(k => { if (activeFixes[k]) parts.push(fixLabels[k]); });
-  if (activeGov.mandatory) parts.push('Mandatory');
+
   if (activeGov.reserve) parts.push(`Reserve ${reserveJ12} seats`);
   if (activeGov.quotas) {
     const pS = document.getElementById('quotaPct_S26').value;
@@ -756,7 +773,7 @@ function applyCombo() {
     parts.push(`Quotas (S26:${pS}%, J16:${p16}%, J12:${p12}%)`);
   }
   if (activeGov.caps) parts.push('Caps (S26:90, J12:25)');
-  if (activeGov.intensive3) parts.push('3 Intensives');
+  if (activeGov.intensive2) parts.push('2 Courses');
   document.getElementById('comboLabel').textContent = parts.length > 1 ? 'Active: ' + parts.join(' + ') : '';
 
   renderCalendar();
@@ -764,13 +781,14 @@ function applyCombo() {
   updateDerived();
   document.getElementById('resultsPanel').style.display = 'none';
   document.getElementById('sensPanel').style.display = 'none';
+  document.getElementById('reserveSensPanel').style.display = 'none';
 }
 
 function resetScenario() {
   // Reset all toggles
   activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
-  activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false, sct: false };
-  activeGov = { mandatory: false, reserve: false, quotas: false, caps: false, intensive3: false };
+  activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
+  activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
   document.getElementById('reservePanel').style.display = 'none';
   document.getElementById('quotaPanel').style.display = 'none';
   document.querySelectorAll('#stressBar .scenario-btn, #fixBar .scenario-btn, #govBar .scenario-btn').forEach(b => b.classList.remove('toggle-on'));
@@ -829,11 +847,11 @@ function solveWith(ns, avgLoadOverrides) {
     let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
 
     // Intensive3 mode: qualification bar drops to 3 courses (from avg ~3.7)
-    if (intensive3Mode) avgLoad = 3;
+    if (intensive2Mode) avgLoad = 2;
     const courses = cohortCourses[co];
     const courseIds = Object.keys(courses);
 
-    const minCourses = Math.max(3, Math.ceil(avgLoad));
+    const minCourses = intensive2Mode ? 2 : 3;
     if (courseIds.length < minCourses || n === 0) {
       result[co] = 0;
       cohortAlloc[co] = {};
@@ -913,11 +931,11 @@ function solveWith(ns, avgLoadOverrides) {
     if (result[co] >= ns[co]) return;
     const remaining = ns[co] - result[co];
     let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
-    if (intensive3Mode) avgLoad = 3;
+    if (intensive2Mode) avgLoad = 2;
 
     const courses = cohortCourses[co];
     const courseIds = Object.keys(courses);
-    if (courseIds.length < Math.max(3, Math.ceil(avgLoad))) return;
+    if (courseIds.length < (intensive2Mode ? 2 : 3)) return;
 
     // Rebuild course caps from remaining capacity — NO quota restriction
     const courseCaps = {};
@@ -988,15 +1006,11 @@ function canServeLoad(n, courseIds, courseCaps, avgLoad) {
   return totalCap >= Math.ceil(avgLoad * n);
 }
 
-let mandatoryMode = false;
 let reserveJ12 = 0;
-let intensive3Mode = false; // qualify via 3 intensives only
+let intensive2Mode = false; // qualify via 2 courses only
 
 function getMandatoryOverrides() {
-  if (!mandatoryMode) return null;
-  const o = {};
-  COHORTS.forEach(co => { o[co] = Math.max(2, getCohortAvgLoad(co) - 1); });
-  return o;
+  return null;
 }
 
 function solve(mode) {
@@ -1015,17 +1029,18 @@ function solve(mode) {
     const res = solveWithFloor(ns, floor, loadOvr);
     res.mode = 'fair';
     res.fairRate = bestRate;
-    res.mandatory = mandatoryMode;
-    res.intensive3 = intensive3Mode;
+    res.mandatory = false;
+    res.intensive2 = intensive2Mode;
     displayResults(res);
   } else {
     const res = solveWith(ns, loadOvr);
     res.mode = 'max';
-    res.mandatory = mandatoryMode;
-    res.intensive3 = intensive3Mode;
+    res.mandatory = false;
+    res.intensive2 = intensive2Mode;
     displayResults(res);
   }
   document.getElementById('sensPanel').style.display = 'none';
+  document.getElementById('reserveSensPanel').style.display = 'none';
 }
 
 function solveWithFloor(ns, floors, avgLoadOverrides) {
@@ -1077,10 +1092,10 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
     let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
 
     // Intensive3 mode: qualification bar drops to 3 courses (from avg ~3.7)
-    if (intensive3Mode) avgLoad = 3;
+    if (intensive2Mode) avgLoad = 2;
     const courses = cohortCourses[co];
     const courseIds = Object.keys(courses);
-    const minCourses = Math.max(3, Math.ceil(avgLoad));
+    const minCourses = intensive2Mode ? 2 : 3;
 
     if (courseIds.length < minCourses || n === 0) {
       result[co] = 0;
@@ -1220,6 +1235,82 @@ function runSensitivity() {
 
   document.getElementById('sensPanel').style.display = 'block';
   document.getElementById('sensPanel').scrollIntoView({ behavior: 'smooth' });
+
+  // Also run reserve sensitivity if reserve is active
+  if (activeGov.reserve) runReserveSensitivity();
+}
+
+function runReserveSensitivity() {
+  const d = getDerived();
+  const ns = { S26: d.S26, J27_12: d.J27_12, J27_16: d.J27_16 };
+  const totalNeeded = d.S26 + d.J27_12 + d.J27_16;
+  const loadOvr = getMandatoryOverrides();
+
+  // Baseline: R=0
+  const savedReserve = reserveJ12;
+  reserveJ12 = 0;
+  rebuildSlots();
+  const baseline = solveWith(ns, loadOvr);
+  const baseS26 = baseline.result.S26;
+  const baseJ12 = baseline.result.J27_12;
+  const baseTotal = COHORTS.reduce((s, co) => s + baseline.result[co], 0);
+
+  const sensBody = document.getElementById('reserveSensBody');
+  sensBody.innerHTML = '';
+  const curR = savedReserve;
+  let bestTotal = 0, bestR = 0;
+
+  for (let r = 0; r <= 25; r++) {
+    reserveJ12 = r;
+    rebuildSlots();
+    const res = solveWith(ns, loadOvr);
+    const s26 = res.result.S26;
+    const j12 = res.result.J27_12;
+    const j16 = res.result.J27_16;
+    const totalServed = s26 + j12 + j16;
+    const allGood = totalServed >= totalNeeded;
+
+    if (totalServed > bestTotal) { bestTotal = totalServed; bestR = r; }
+
+    const s26delta = s26 - baseS26;
+    const j12delta = j12 - baseJ12;
+    const netDelta = totalServed - baseTotal;
+    const isCurrent = (r === curR);
+
+    const s26pct = d.S26 > 0 ? Math.round(s26 / d.S26 * 100) : 100;
+    const j12pct = d.J27_12 > 0 ? Math.round(j12 / d.J27_12 * 100) : 100;
+    const j16pct = d.J27_16 > 0 ? Math.round(j16 / d.J27_16 * 100) : 100;
+
+    const statusCls = allGood ? 'sens-safe' : (totalServed / totalNeeded >= 0.8 ? 'sens-warning' : 'sens-danger');
+    const statusText = allGood ? '✓ All served' : `${totalNeeded - totalServed} unserved`;
+
+    const fmtDelta = v => v > 0 ? `<span style="color:#16a34a">+${v}</span>` : v < 0 ? `<span style="color:#dc2626">${v}</span>` : '—';
+
+    sensBody.innerHTML += `<tr class="${isCurrent ? 'current' : ''}" style="${r === bestR ? 'font-weight:600' : ''}">
+      <td>${r} ${isCurrent ? '◀ current' : ''}</td>
+      <td class="${s26pct < 100 ? 'sens-danger' : ''}">${s26}/${d.S26} (${s26pct}%)</td>
+      <td class="${j12pct < 100 ? 'sens-danger' : ''}">${j12}/${d.J27_12} (${j12pct}%)</td>
+      <td class="${j16pct < 100 ? 'sens-danger' : ''}">${j16}/${d.J27_16} (${j16pct}%)</td>
+      <td>${totalServed}</td><td>${totalNeeded}</td>
+      <td>${fmtDelta(s26delta)}</td>
+      <td>${fmtDelta(j12delta)}</td>
+      <td>${fmtDelta(netDelta)}</td>
+      <td class="${statusCls}">${statusText}</td>
+    </tr>`;
+  }
+
+  const thresholdBox = document.getElementById('reserveThresholdBox');
+  thresholdBox.innerHTML = `<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:10px;padding:16px;text-align:center;margin-top:12px;">
+    <div style="font-size:14px;font-weight:700;color:#1d4ed8;">Optimal reserve: ${bestR} seats → ${bestTotal} served</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:4px;">Δ columns show change vs R=0 (no reservation)</div>
+  </div>`;
+
+  // Restore
+  reserveJ12 = savedReserve;
+  rebuildSlots();
+
+  document.getElementById('reserveSensPanel').style.display = 'block';
+  document.getElementById('reserveSensPanel').scrollIntoView({ behavior: 'smooth' });
 }
 
 function displayResults(res) {
@@ -1262,7 +1353,7 @@ function displayResults(res) {
     const p12 = document.getElementById('quotaPct_J27_12').value;
     govNotes.push(`Quotas: S26 ${pS}%, J16 ${p16}%, J12 ${p12}%`);
   }
-  if (res.intensive3) govNotes.push('Qualify via 3 intensives');
+  if (res.intensive2) govNotes.push('Qualify via 2 courses');
   const mandNote = govNotes.length > 0 ? `<div style="font-size:12px;margin-top:4px;">Governance: ${govNotes.join(' + ')}</div>` : '';
   document.getElementById('totalBar').innerHTML = `<div class="total-bar ${totalZ >= totalN ? 'good' : 'bad'}">
     Total: ${totalZ} of ${totalN} students can complete (${totalN > 0 ? Math.round(totalZ/totalN*100) : 100}%)
