@@ -101,7 +101,7 @@ Move courses to periods that improve J27 12mo access:
 | **Reserve Seats** (default R=12) | Subtracts R from S26/J16 capacity in J12-accessible slots | See sensitivity analysis in tool |
 | **Cohort Quotas** (50/25/25%) | Each cohort gets a guaranteed share of each shared slot | Less efficient than reservation |
 | **Cohort Caps** (S26: 90, J12: 25) | Limits concentration enrollment | Reduces total demand |
-| **Qualify via 2 Courses** | Qualification bar drops from ~3.7 to 2 courses | Most impactful single lever |
+| **Qualify via 2 Courses** | Qualification bar drops from 3 to 2 courses | Most impactful single lever |
 
 > [!TIP]
 > **Reservation vs Quotas**: Reservation is strictly more efficient — it only constrains cohorts competing with J12 in shared slots, without wasting capacity on J16 who fills from exclusive late slots.
@@ -111,7 +111,7 @@ Move courses to periods that improve J27 12mo access:
 ## 4. Scenario Summary
 
 > [!IMPORTANT]
-> Lowering the qualification bar from ~3.7 to 2 courses ("Qualify via 2") is the **single most impactful governance lever**.
+> Lowering the qualification bar from 3 to 2 courses ("Qualify via 2") is the **single most impactful governance lever**.
 
 | Scenario | Qualify via 2 | + Reserve | + Schedule Fix | Result |
 |----------|:---:|:---:|:---:|--------|
@@ -142,7 +142,7 @@ Move courses to periods that improve J27 12mo access:
 
 ### The Structural Argument
 
-The root cause is **format asymmetry**: J27 12mo has zero elective periods and only 3 accessible intensive periods. Their entire concentration must come from intensives. The default qualification bar (~3.7 courses avg) is nearly impossible for J12 with only 4 accessible courses.
+The root cause is **format asymmetry**: J27 12mo has zero elective periods and only 3 accessible intensive periods. Their entire concentration must come from intensives. The default qualification bar (3 courses minimum) leaves J12 with almost no margin — they have only 4 accessible courses and must fill 3.
 
 Two key governance levers:
 1. **Qualify via 2 Courses** — lowers the bar so J12's 4 accessible courses are sufficient. Achieves 100% under current setup.
