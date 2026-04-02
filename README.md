@@ -12,7 +12,7 @@ The Tech & AI concentration serves three cohorts with different enrollment timel
 | **J27 12mo** | Starts Jan 2027, graduates Dec 2027 | Apr 27, Oct 27, Dec 27 |
 | **J27 16mo** | Starts Jan 2027, graduates Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Feb 28, Apr 28 |
 
-**S26 enrolls first**, then J27 16mo and J27 12mo enroll **simultaneously**. The solver models this as S26 first (greedy), then J16/J12 sequentially as an approximation of their simultaneous enrollment.
+**S26 enrolls first**, then J27 16mo and J27 12mo enroll **simultaneously**. The solver models this as S26 first (greedy), then tries both J16/J12 orderings and keeps the better total.
 
 **The structural tension**: J27 12mo has only 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They compete for seats with larger cohorts.
 
@@ -111,23 +111,19 @@ $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \for
 
 Note: Cohort quotas are handled within $\bar{Q}_{s,c}$ — no separate constraint needed. The quota percentages $\alpha_c$ are tunable in the tool (default: S26 50%, J16 25%, J12 25%).
 
-### Greedy Sequential Solver
+### Two-Phase Greedy Solver
 
-S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously. The solver models this as: (1) S26 enrolls greedily, then (2) for J16 and J12, it tries both orderings (J16→J12 and J12→J16) and keeps whichever produces the higher total served.
+S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously.
 
-This is modeled as a **sequence of sub-problems**, one per cohort:
+**Phase 1 — S26 (greedy):** Solve for S26 alone, maximizing $n_{S26}$ subject to constraints (1)–(5), consuming capacity from each slot.
 
-**Stage $t$** (for cohort $c_t$): Solve
-
-$$\max \; n_{c_t}$$
-
-subject to constraints (1)–(5) for cohort $c_t$ only, with capacity reduced by prior allocations:
+**Phase 2 — J16 + J12 (simultaneous):** With remaining capacity after S26, try both orderings (J16→J12 and J12→J16). Each ordering solves cohorts sequentially with reduced capacity:
 
 $$\widetilde{\text{Cap}}_s^{(t)} = \widetilde{\text{Cap}}_s - \sum_{\tau < t} x_{s, c_\tau}^* \qquad \forall\; s \in \mathcal{S}$$
 
-where $x_{s, c_\tau}^*$ are the fixed allocations from stages $\tau < t$.
+Keep whichever ordering produces the higher total $n_{J16} + n_{J12}$.
 
-**Implementation note**: The tool solves each stage via binary search over $n_{c_t}$ with water-fill allocation (greedy LP relaxation), rather than a general LP solver.
+**Implementation note**: Each cohort is solved via binary search over $n_c$ with water-fill allocation (greedy), rather than a general LP solver.
 
 ### Fairness Mode (Equalize)
 
@@ -141,7 +137,7 @@ plus all constraints (1)–(5).
 
 Equivalently: each cohort is **capped at its fair-share floor** $\text{floor}(P / 100 \cdot N_c)$, preventing early cohorts from consuming capacity that later cohorts need.
 
-The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequential solver with each cohort capped at its floor and checks feasibility.
+The tool finds $P^*$ via binary search: for each candidate $P$, it runs the two-phase solver with each cohort capped at its floor and checks feasibility.
 
 ## The 9 Courses
 
