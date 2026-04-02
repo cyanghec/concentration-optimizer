@@ -817,10 +817,117 @@ function resetScenario() {
 
 // ========== ENROLLMENT ORDER ==========
 // S26 enrolls first, then J27_16 and J27_12 simultaneously
-// Solver processes S26 first, then J16/J12 are modeled sequentially as an approximation
-const ENROLL_ORDER = ['S26', 'J27_16', 'J27_12'];
+// Solver tries both J16→J12 and J12→J16 orderings, keeps the higher total
+const PHASE1 = ['S26'];
+const PHASE2_OPTIONS = [['J27_16', 'J27_12'], ['J27_12', 'J27_16']];
+const ENROLL_ORDER = ['S26', 'J27_16', 'J27_12']; // kept for overflow pass
 
 // ========== SOLVER ==========
+
+// Helper: solve a single cohort greedily given current remaining capacity
+function solveCohortGreedy(co, n, avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc) {
+  let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+  if (intensive2Mode) avgLoad = 2;
+  const courses = cohortCourses[co];
+  const courseIds = Object.keys(courses);
+  const minCourses = intensive2Mode ? 2 : 3;
+
+  if (courseIds.length < minCourses || n === 0) {
+    result[co] = 0;
+    cohortAlloc[co] = {};
+    return;
+  }
+
+  const courseCaps = {};
+  courseIds.forEach(cid => {
+    courseCaps[cid] = courses[cid].reduce((sum, s) => {
+      const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
+      return sum + Math.max(0, cap - reserve);
+    }, 0);
+  });
+
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+    else hi = mid - 1;
+  }
+  result[co] = lo;
+
+  // Water-fill allocation
+  const courseAllocation = waterFill(courseIds, courseCaps, lo, avgLoad);
+  cohortAlloc[co] = courseAllocation;
+
+  courseIds.forEach(cid => {
+    let toAlloc = courseAllocation[cid] || 0;
+    const sortedSlots = [...courses[cid]].sort((a, b) => {
+      const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+      const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
+      const resA = (co !== 'J27_12') ? reservedCap[a.slotIdx] : 0;
+      const resB = (co !== 'J27_12') ? reservedCap[b.slotIdx] : 0;
+      return (rawB - resB) - (rawA - resA);
+    });
+    sortedSlots.forEach(si => {
+      const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
+      const avail = Math.max(0, raw - reserve);
+      const give = Math.min(toAlloc, avail);
+      alloc[si.slotIdx][co] += give;
+      remCap[si.slotIdx] -= give;
+      remQuota[si.slotIdx][co] -= give;
+      toAlloc -= give;
+    });
+  });
+}
+
+// Water-fill: distribute target seat-enrollments across courses as evenly as possible
+function waterFill(courseIds, courseCaps, served, avgLoad) {
+  const courseAllocation = {};
+  const maxPerCourse = {};
+  let totalAvail = 0;
+  courseIds.forEach(cid => {
+    maxPerCourse[cid] = Math.min(courseCaps[cid], served);
+    totalAvail += maxPerCourse[cid];
+  });
+  const target = Math.ceil(avgLoad * served);
+  if (totalAvail <= target) {
+    courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
+  } else {
+    courseIds.forEach(cid => { courseAllocation[cid] = 0; });
+    let remaining = target;
+    while (remaining > 0) {
+      let bestCid = null, bestVal = Infinity;
+      courseIds.forEach(cid => {
+        if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
+          bestVal = courseAllocation[cid]; bestCid = cid;
+        }
+      });
+      if (bestCid === null) break;
+      const level = courseAllocation[bestCid];
+      const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
+      atLevel.forEach(cid => { if (remaining > 0) { courseAllocation[cid]++; remaining--; } });
+    }
+  }
+  return courseAllocation;
+}
+
+// Deep-clone solver state arrays
+function cloneState(remCap, remQuota, alloc) {
+  return {
+    remCap: [...remCap],
+    remQuota: remQuota.map(o => Object.assign({}, o)),
+    alloc: alloc.map(o => Object.assign({}, o))
+  };
+}
+
+// Restore solver state from snapshot
+function restoreState(remCap, remQuota, alloc, snap) {
+  snap.remCap.forEach((v, i) => remCap[i] = v);
+  snap.remQuota.forEach((o, i) => Object.assign(remQuota[i], o));
+  snap.alloc.forEach((o, i) => Object.assign(alloc[i], o));
+}
+
 function solveWith(ns, avgLoadOverrides) {
   const cohortCourses = {};
   COHORTS.forEach(co => {
@@ -834,8 +941,6 @@ function solveWith(ns, avgLoadOverrides) {
     });
     cohortCourses[co] = courses;
   });
-
-  const cohortOrder = ENROLL_ORDER;
 
   const remCap = slots.map(s => effCapPref(s));
   const remQuota = slots.map((s, i) => {
@@ -863,92 +968,39 @@ function solveWith(ns, avgLoadOverrides) {
   const result = {};
   const cohortAlloc = {};
 
-  cohortOrder.forEach(co => {
-    const n = ns[co];
-    let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
-
-    // Intensive3 mode: qualification bar drops to 3 courses (from avg ~3.7)
-    if (intensive2Mode) avgLoad = 2;
-    const courses = cohortCourses[co];
-    const courseIds = Object.keys(courses);
-
-    const minCourses = intensive2Mode ? 2 : 3;
-    if (courseIds.length < minCourses || n === 0) {
-      result[co] = 0;
-      cohortAlloc[co] = {};
-      return;
-    }
-
-    const courseCaps = {};
-    courseIds.forEach(cid => {
-      courseCaps[cid] = courses[cid].reduce((sum, s) => {
-        const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
-        return sum + Math.max(0, cap - reserve);
-      }, 0);
-    });
-
-    let lo = 0, hi = n;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
-      else hi = mid - 1;
-    }
-    result[co] = lo;
-
-    // Water-fill allocation
-    const courseAllocation = {};
-    const maxPerCourse = {};
-    let totalAvail = 0;
-    courseIds.forEach(cid => {
-      maxPerCourse[cid] = Math.min(courseCaps[cid], lo);
-      totalAvail += maxPerCourse[cid];
-    });
-    const target = Math.ceil(avgLoad * lo);
-    if (totalAvail <= target) {
-      courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
-    } else {
-      courseIds.forEach(cid => { courseAllocation[cid] = 0; });
-      let remaining = target;
-      while (remaining > 0) {
-        let bestCid = null, bestVal = Infinity;
-        courseIds.forEach(cid => {
-          if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
-            bestVal = courseAllocation[cid]; bestCid = cid;
-          }
-        });
-        if (bestCid === null) break;
-        const level = courseAllocation[bestCid];
-        const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
-        atLevel.forEach(cid => { if (remaining > 0) { courseAllocation[cid]++; remaining--; } });
-      }
-    }
-    cohortAlloc[co] = courseAllocation;
-
-    courseIds.forEach(cid => {
-      let toAlloc = courseAllocation[cid] || 0;
-      const sortedSlots = [...courses[cid]].sort((a, b) => {
-        const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
-        const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
-        const resA = (co !== 'J27_12') ? reservedCap[a.slotIdx] : 0;
-        const resB = (co !== 'J27_12') ? reservedCap[b.slotIdx] : 0;
-        return (rawB - resB) - (rawA - resA);
-      });
-      sortedSlots.forEach(si => {
-        const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
-        const avail = Math.max(0, raw - reserve);
-        const give = Math.min(toAlloc, avail);
-        alloc[si.slotIdx][co] += give;
-        remCap[si.slotIdx] -= give;
-        remQuota[si.slotIdx][co] -= give;
-        toAlloc -= give;
-      });
-    });
+  // Phase 1: S26 enrolls first
+  PHASE1.forEach(co => {
+    solveCohortGreedy(co, ns[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc);
   });
 
+  // Phase 2: J16 and J12 enroll simultaneously — try both orderings, keep better total
+  const snap = cloneState(remCap, remQuota, alloc);
+  let bestTotal = -1;
+  let bestResult = null, bestAlloc = null, bestCohortAlloc = null;
+
+  PHASE2_OPTIONS.forEach(order => {
+    restoreState(remCap, remQuota, alloc, snap);
+    const tryResult = Object.assign({}, result);
+    const tryCohortAlloc = Object.assign({}, cohortAlloc);
+    order.forEach(co => {
+      solveCohortGreedy(co, ns[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, tryResult, tryCohortAlloc);
+    });
+    const total = (tryResult['J27_16'] || 0) + (tryResult['J27_12'] || 0);
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestResult = Object.assign({}, tryResult);
+      bestCohortAlloc = Object.assign({}, tryCohortAlloc);
+      bestAlloc = cloneState(remCap, remQuota, alloc);
+    }
+  });
+
+  // Apply best result
+  Object.assign(result, bestResult);
+  Object.assign(cohortAlloc, bestCohortAlloc);
+  restoreState(remCap, remQuota, alloc, bestAlloc);
+
   // === OVERFLOW PASS: unserved cohorts grab leftover capacity (quotas lifted) ===
-  cohortOrder.forEach(co => {
+  ENROLL_ORDER.forEach(co => {
     if (result[co] >= ns[co]) return;
     const remaining = ns[co] - result[co];
     let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
@@ -974,30 +1026,7 @@ function solveWith(ns, avgLoadOverrides) {
     result[co] += lo;
 
     // Water-fill for extra students
-    const courseAllocation = {};
-    const maxPerCourse = {};
-    courseIds.forEach(cid => { maxPerCourse[cid] = Math.min(courseCaps[cid], lo); });
-    const target = Math.ceil(avgLoad * lo);
-    let totalAvail = 0;
-    courseIds.forEach(cid => { totalAvail += maxPerCourse[cid]; });
-    if (totalAvail <= target) {
-      courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
-    } else {
-      courseIds.forEach(cid => { courseAllocation[cid] = 0; });
-      let rem = target;
-      while (rem > 0) {
-        let bestCid = null, bestVal = Infinity;
-        courseIds.forEach(cid => {
-          if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
-            bestVal = courseAllocation[cid]; bestCid = cid;
-          }
-        });
-        if (bestCid === null) break;
-        const level = courseAllocation[bestCid];
-        const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
-        atLevel.forEach(cid => { if (rem > 0) { courseAllocation[cid]++; rem--; } });
-      }
-    }
+    const courseAllocation = waterFill(courseIds, courseCaps, lo, avgLoad);
 
     // Merge into cohortAlloc
     courseIds.forEach(cid => {
@@ -1064,6 +1093,67 @@ function solve(mode) {
   document.getElementById('reserveSensPanel').style.display = 'none';
 }
 
+// Helper: solve a single cohort with floor constraint (for fairness mode)
+function solveCohortFloor(co, n, floor, avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc) {
+  let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+  if (intensive2Mode) avgLoad = 2;
+  const courses = cohortCourses[co];
+  const courseIds = Object.keys(courses);
+  const minCourses = intensive2Mode ? 2 : 3;
+
+  if (courseIds.length < minCourses || n === 0) {
+    result[co] = 0;
+    cohortAlloc[co] = {};
+    return floor > 0 ? false : true; // infeasible if floor > 0
+  }
+
+  const courseCaps = {};
+  courseIds.forEach(cid => {
+    courseCaps[cid] = courses[cid].reduce((sum, s) => {
+      const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
+      return sum + Math.max(0, cap - reserve);
+    }, 0);
+  });
+
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+    else hi = mid - 1;
+  }
+  const maxN = lo;
+
+  if (maxN < floor) return false; // infeasible
+  const served = floor; // Cap at fair share
+  result[co] = served;
+
+  const courseAllocation = waterFill(courseIds, courseCaps, served, avgLoad);
+  cohortAlloc[co] = courseAllocation;
+
+  courseIds.forEach(cid => {
+    let toAlloc = courseAllocation[cid] || 0;
+    const sortedSlots = [...courses[cid]].sort((a, b) => {
+      const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+      const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
+      const resA = (co !== 'J27_12') ? reservedCap[a.slotIdx] : 0;
+      const resB = (co !== 'J27_12') ? reservedCap[b.slotIdx] : 0;
+      return (rawB - resB) - (rawA - resA);
+    });
+    sortedSlots.forEach(si => {
+      const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
+      const avail = Math.max(0, raw - reserve);
+      const give = Math.min(toAlloc, avail);
+      alloc[si.slotIdx][co] += give;
+      remCap[si.slotIdx] -= give;
+      remQuota[si.slotIdx][co] -= give;
+      toAlloc -= give;
+    });
+  });
+  return true; // feasible
+}
+
 function solveWithFloor(ns, floors, avgLoadOverrides) {
   const cohortCourses = {};
   COHORTS.forEach(co => {
@@ -1077,8 +1167,6 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
     });
     cohortCourses[co] = courses;
   });
-
-  const cohortOrder = ENROLL_ORDER;
 
   const remCap = slots.map(s => effCapPref(s));
   const remQuota = slots.map((s, i) => {
@@ -1105,99 +1193,46 @@ function solveWithFloor(ns, floors, avgLoadOverrides) {
   const alloc = slots.map(() => { const o = {}; COHORTS.forEach(co => o[co] = 0); return o; });
   const result = {};
   const cohortAlloc = {};
+
+  // Phase 1: S26
   let feasible = true;
-
-  cohortOrder.forEach(co => {
+  PHASE1.forEach(co => {
     if (!feasible) return;
-    const n = ns[co];
-    let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+    feasible = solveCohortFloor(co, ns[co], floors[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCapF, alloc, result, cohortAlloc);
+  });
+  if (!feasible) return null;
 
-    // Intensive3 mode: qualification bar drops to 3 courses (from avg ~3.7)
-    if (intensive2Mode) avgLoad = 2;
-    const courses = cohortCourses[co];
-    const courseIds = Object.keys(courses);
-    const minCourses = intensive2Mode ? 2 : 3;
+  // Phase 2: J16 and J12 simultaneously — try both orderings, keep first feasible with better total
+  const snap = cloneState(remCap, remQuota, alloc);
+  let bestTotal = -1;
+  let bestResult = null, bestAlloc = null, bestCohortAlloc = null;
+  let anyFeasible = false;
 
-    if (courseIds.length < minCourses || n === 0) {
-      result[co] = 0;
-      cohortAlloc[co] = {};
-      if (floors[co] > 0) feasible = false;
-      return;
-    }
-
-    const courseCaps = {};
-    courseIds.forEach(cid => {
-      courseCaps[cid] = courses[cid].reduce((sum, s) => {
-        const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCapF[s.slotIdx] : 0;
-        return sum + Math.max(0, cap - reserve);
-      }, 0);
+  PHASE2_OPTIONS.forEach(order => {
+    restoreState(remCap, remQuota, alloc, snap);
+    const tryResult = Object.assign({}, result);
+    const tryCohortAlloc = Object.assign({}, cohortAlloc);
+    let ok = true;
+    order.forEach(co => {
+      if (!ok) return;
+      ok = solveCohortFloor(co, ns[co], floors[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCapF, alloc, tryResult, tryCohortAlloc);
     });
-
-    let lo = 0, hi = n;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
-      else hi = mid - 1;
+    if (!ok) return;
+    anyFeasible = true;
+    const total = (tryResult['J27_16'] || 0) + (tryResult['J27_12'] || 0);
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestResult = Object.assign({}, tryResult);
+      bestCohortAlloc = Object.assign({}, tryCohortAlloc);
+      bestAlloc = cloneState(remCap, remQuota, alloc);
     }
-    const maxN = lo;
-
-    if (maxN < floors[co]) { feasible = false; return; }
-    const served = floors[co]; // Cap at fair share, not maxN
-    result[co] = served;
-
-    // Water-fill
-    const courseAllocation = {};
-    const maxPerCourse = {};
-    let totalAvail = 0;
-    courseIds.forEach(cid => {
-      maxPerCourse[cid] = Math.min(courseCaps[cid], served);
-      totalAvail += maxPerCourse[cid];
-    });
-    const target = Math.ceil(avgLoad * served);
-    if (totalAvail <= target) {
-      courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
-    } else {
-      courseIds.forEach(cid => { courseAllocation[cid] = 0; });
-      let remaining = target;
-      while (remaining > 0) {
-        let bestCid = null, bestVal = Infinity;
-        courseIds.forEach(cid => {
-          if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
-            bestVal = courseAllocation[cid]; bestCid = cid;
-          }
-        });
-        if (bestCid === null) break;
-        const level = courseAllocation[bestCid];
-        const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
-        atLevel.forEach(cid => { if (remaining > 0) { courseAllocation[cid]++; remaining--; } });
-      }
-    }
-    cohortAlloc[co] = courseAllocation;
-
-    courseIds.forEach(cid => {
-      let toAlloc = courseAllocation[cid] || 0;
-      const sortedSlots = [...courses[cid]].sort((a, b) => {
-        const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
-        const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
-        const resA = (co !== 'J27_12') ? reservedCapF[a.slotIdx] : 0;
-        const resB = (co !== 'J27_12') ? reservedCapF[b.slotIdx] : 0;
-        return (rawB - resB) - (rawA - resA);
-      });
-      sortedSlots.forEach(si => {
-        const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
-        const reserve = (co !== 'J27_12') ? reservedCapF[si.slotIdx] : 0;
-        const avail = Math.max(0, raw - reserve);
-        const give = Math.min(toAlloc, avail);
-        alloc[si.slotIdx][co] += give;
-        remCap[si.slotIdx] -= give;
-        remQuota[si.slotIdx][co] -= give;
-        toAlloc -= give;
-      });
-    });
   });
 
-  if (!feasible) return null;
+  if (!anyFeasible) return null;
+  Object.assign(result, bestResult);
+  Object.assign(cohortAlloc, bestCohortAlloc);
+  restoreState(remCap, remQuota, alloc, bestAlloc);
+
   return { ns, result, alloc, cohortAlloc };
 }
 

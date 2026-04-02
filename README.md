@@ -113,7 +113,7 @@ Note: Cohort quotas are handled within $\bar{Q}_{s,c}$ — no separate constrain
 
 ### Greedy Sequential Solver
 
-S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously. The solver approximates this as a **greedy sequential heuristic** — processing cohorts in order $\sigma = (c_1, c_2, c_3)$ = (S26, J27\_16mo, J27\_12mo), where each cohort maximizes its own allocation given remaining capacity. The J16/J12 sequential ordering is a simplification of their simultaneous enrollment.
+S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously. The solver models this as: (1) S26 enrolls greedily, then (2) for J16 and J12, it tries both orderings (J16→J12 and J12→J16) and keeps whichever produces the higher total served.
 
 This is modeled as a **sequence of sub-problems**, one per cohort:
 
@@ -184,7 +184,7 @@ Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fr
 
 | Scenario | S26 | J12 | J16 | Total | Key Risk |
 |----------|-----|-----|-----|-------|----------|
-| **Current setup** | 70 | 12 | 22 | 104 | J12 gets 0/12 without governance |
+| **Current setup** | 70 | 12 | 22 | 104 | J12 gets 3/12 without governance |
 | **J26 Flood** | 70 | 12 | 22 | 104 | Previous cohort consumes year-1 slots |
 | **All J12 join** | 70 | 29 | 22 | 121 | 29 students competing for 4 courses |
 | **High uptake** | 110 | 25 | 45 | 180 | Demand exceeds capacity |
@@ -226,19 +226,19 @@ Lowering the qualification bar from ~3.7 to 2 courses is the single most impactf
 
 | Scenario | Qualify via 2 | + Reserve | + Schedule Fixes | Result |
 |----------|:---:|:---:|:---:|--------|
-| **Current setup** (104 students) | ✓ | — | — | **104/104 (100%)** |
-| **High uptake** (180 students) | ✓ | — | — | 166/180 (J12: 11/25) |
-| **High uptake** | ✓ | R=12 | — | **180/180 (100%)** |
-| **Everyone joins** (233 students) | ✓ | — | — | 204/233 (J12: 0/29) |
-| **Everyone joins** | ✓ | R=12 | — | 228/233 (J12: 24/29) |
+| **Current setup** (104 students) | — | — | — | 95/104 (J12: 3/12) |
+| **Current setup** | ✓ | — | — | **104/104 (100%)** |
+| **High uptake** (180 students) | ✓ | — | — | **180/180 (100%)** |
+| **Everyone joins** (233 students) | ✓ | — | — | 210/233 (J12: 6/29) |
+| **Everyone joins** | ✓ | R=12 | — | 230/233 (J12: 26/29) |
 | **Everyone joins** | ✓ | R=15 | — | **233/233 (100%)** |
 | **Everyone joins** | ✓ | R=12 | All fixes | **233/233 (100%)** |
-| **Everyone + J26 Flood** | ✓ | — | — | 173/233 (J12: 0/29) |
+| **Everyone + J26 Flood** | ✓ | — | — | 173/233 (J12: 0/29, S26: 119/150) |
 | **Everyone + J26 Flood** | ✓ | R=12 | All fixes | 210/233 (J12: 29/29, S26: 127/150) |
 
 **Key takeaways:**
 - **Current setup**: "Qualify via 2" alone achieves 100%. No other levers needed.
-- **High uptake**: "Qualify via 2" + Reserve 12 seats = 100%.
+- **High uptake**: "Qualify via 2" alone achieves 100%. Simultaneous enrollment means J12 is no longer shut out.
 - **Everyone joins**: "Qualify via 2" + Reserve 15 seats = 100%, or Reserve 12 + all schedule fixes = 100%.
 - **Everyone + J26 Flood** (worst case): Even with all levers, 100% is not achievable. S26 drops to 127/150. J12 can be fully served with reserve + fixes.
 
