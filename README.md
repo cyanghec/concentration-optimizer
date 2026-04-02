@@ -72,7 +72,7 @@ Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 
 
 Intuition (reservation): if a slot has 50 effective seats and $R = 12$, then S26 and J27 16mo can each use up to 38, while J27 12mo sees the full 50. Combined, non-J12 cohorts can never take more than 38 — guaranteeing at least 12 remain for J12.
 
-**Reservation vs Quotas**: Reservation is more efficient because it only constrains cohorts that compete with J12 and doesn't waste capacity on cohorts with abundant exclusive slots. Under Perfect Storm: reservation achieves 140/184 (76%) vs quotas at 110/184 (60%).
+**Reservation vs Quotas**: Reservation is more efficient because it only constrains cohorts that compete with J12 and doesn't waste capacity on cohorts with abundant exclusive slots.
 
 ### Decision Variables
 
@@ -162,7 +162,7 @@ The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequ
 - **J27 16mo**: 7 of 8 (misses AIBDM — only in Apr-Jun elective)
 - **J27 12mo**: 4 of 8 (only intensives in Apr 27, Oct 27, Dec 27 — no elective access)
 
-With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 4/9.
+With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 5/9.
 
 ## Previous Consumption (Carry-over from S25/J26)
 
@@ -207,8 +207,8 @@ Move courses to periods that improve J27 12mo access:
 
 ### Governance Mechanisms
 
-| Mechanism | Effect | Impact under Perfect Storm |
-|-----------|--------|---------------------------|
+| Mechanism | Effect | Notes |
+|-----------|--------|-------|
 | **Reserve Seats** (R=12 per course) | Subtracts R from S26/J16 capacity in J12-accessible slots | J12 jumps from 0 to served; see sensitivity analysis |
 | **Cohort Quotas** (S26: 50%, J16: 25%, J12: 25%) | Each cohort gets a guaranteed share of each shared slot | J12 gains access — but total drops (wastes unused quota) |
 | **Cohort Caps** (S26: 90, J12: 25) | Limits concentration enrollment | Reduces total demand |
