@@ -2,47 +2,55 @@
 
 An interactive tool for modeling capacity constraints, seat allocation, and breaking points across MBA cohorts in the Tech & AI concentration at HEC Paris.
 
-## The Problem
+---
+
+## 1. The Problem
 
 The Tech & AI concentration serves three cohorts with different enrollment timelines and course access:
 
-| Cohort | Timeline | Accessible Periods |
-|--------|----------|-------------------|
-| **S26 16mo** | Starts Sep 2026, graduates Dec 2027 | Dec 26, Jan-Mar 27, Feb 27, Apr-Jun 27, Apr 27, Oct 27, Dec 27 |
-| **J27 12mo** | Starts Jan 2027, graduates Dec 2027 | Apr 27, Oct 27, Dec 27 |
-| **J27 16mo** | Starts Jan 2027, graduates Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Feb 28, Apr 28 |
+| Cohort | Timeline | Accessible Periods | # Periods |
+|--------|----------|-------------------|:---------:|
+| **S26 16mo** | Sep 2026 → Dec 2027 | Dec 26, Jan-Mar 27, Feb 27, Apr-Jun 27, Apr 27, Oct 27, Dec 27 | 7 |
+| **J27 12mo** | Jan 2027 → Dec 2027 | Apr 27, Oct 27, Dec 27 | 3 |
+| **J27 16mo** | Jan 2027 → Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Feb 28, Apr 28 | 6 |
 
-**S26 enrolls first**, then J27 16mo and J27 12mo enroll **simultaneously**. The solver models this as S26 first (greedy), then tries both J16/J12 orderings and keeps the better total.
+> [!IMPORTANT]
+> **S26 enrolls first**, then J16 and J12 enroll **simultaneously**.
+> J27 12mo has only 3 intensive periods and 4 accessible courses — they compete for seats with larger cohorts.
 
-**The structural tension**: J27 12mo has only 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They compete for seats with larger cohorts.
+### 1.1 The 9 Courses
 
-### The 9 Courses
+| Course | Abbr | Format | Cap |
+|--------|------|--------|:---:|
+| User-centric AI Product Design | UCAI | Intensive / Elective | 50 |
+| Product Innovation through Design Thinking | PIDT | Intensive / Elective | 36 |
+| AI Fundamentals | AIFU | Intensive | 50 |
+| Managing AI Responsibly | MAIR | Intensive / Elective | 50 |
+| Tech Sprints | TESP | Elective only | 50 |
+| Data Driven Decision Making | DDDM | Elective only | 50 |
+| AI for Business Decision Making | AIBDM | Elective / Intensive | 35 |
+| Supply Chain Transformation | SCT | Intensive | 50 |
+| Generative AI for Management | GAIM | Intensive | 40 |
 
-| Course | Format | Cap | Notes |
-|--------|--------|-----|-------|
-| User-centric AI Product Design (UCAI) | Intensive/Elective | 50 | |
-| Product Innovation through Design Thinking (PIDT) | Intensive/Elective | 36 | 30 as elective |
-| AI Fundamentals (AIFU) | Intensive | 50 | |
-| Managing AI Responsibly (MAIR) | Intensive/Elective | 50 | |
-| Tech Sprints (TESP) | Elective only | 50 | |
-| Data Driven Decision Making (DDDM) | Elective only | 50 | Cannot be intensive |
-| AI for Business Decision Making (AIBDM) | Elective/Intensive | 35 | |
-| Supply Chain Transformation (SCT) | Intensive | 50 | Not in default schedule; available as fix |
-| Generative AI for Management (GAIM) | Intensive | 40 | |
+> [!NOTE]
+> SCT is not in the default schedule — available via the "SCT: + add Apr intensive" toggle.
 
-**Course accessibility by cohort** (default schedule, without SCT):
-- **S26**: 8 of 8 courses (full access including Oct 27 in year 2)
-- **J27 16mo**: 7 of 8 (misses AIBDM — only in Apr-Jun elective)
-- **J27 12mo**: 4 of 8 (only intensives in Apr 27, Oct 27, Dec 27 — no elective access)
+**Course accessibility by cohort** (default, without SCT):
 
-With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 5/9.
+| Cohort | Courses | Access |
+|--------|:-------:|--------|
+| **S26** | 8 / 8 | Full access (including Oct 27 in year 2) |
+| **J27 16mo** | 7 / 8 | Misses AIBDM (only in Apr-Jun elective) |
+| **J27 12mo** | 4 / 8 | Only intensives in Apr 27, Oct 27, Dec 27 |
 
-### Previous Consumption (Carry-over from S25/J26)
+With SCT added → S26: 9/9, J16: 8/9, J12: 5/9.
+
+### 1.2 Previous Consumption (Carry-over from S25/J26)
 
 Seats already consumed by non-concentration students in year 1 slots (per admin data, Apr 2026):
 
 | Course | Period | Format | Prev Seats | Notes |
-|--------|--------|--------|-----------|-------|
+|--------|--------|--------|:---------:|-------|
 | UCAI | Oct 26 | Intensive | 24 | |
 | PIDT | Dec 26 | Intensive | 30 | |
 | AIFU | Dec 26 | Intensive | 15 | |
@@ -53,7 +61,104 @@ Seats already consumed by non-concentration students in year 1 slots (per admin 
 
 Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fresh offerings.
 
-## How the Math Works
+---
+
+## 2. Stress Scenarios
+
+| Scenario | S26 | J12 | J16 | Total | Key Risk |
+|----------|:---:|:---:|:---:|:-----:|----------|
+| **Current setup** | 70 | 12 | 22 | 104 | J12 gets 3/12 without governance |
+| **J26 Flood** | 70 | 12 | 22 | 104 | Previous cohort consumes year-1 slots |
+| **All J12 join** | 70 | 29 | 22 | 121 | 29 students competing for 4 courses |
+| **High uptake** | 110 | 25 | 45 | 180 | Demand exceeds capacity |
+| **Everyone joins** | 150 | 29 | 54 | 233 | Maximum possible demand |
+
+> [!NOTE]
+> Stress factors stack, except "Everyone joins" which supersedes "All J12 join" and "High uptake".
+
+---
+
+## 3. Solutions
+
+### 3.1 Schedule Fixes
+
+Move courses to periods that improve J27 12mo access:
+
+| Fix | Change | Effect |
+|-----|--------|--------|
+| **MAIR → Oct** | Jan-Mar elective → Oct intensive (both years) | Opens slot in J12's period |
+| **AIBDM → Oct** | Apr-Jun elective → Oct intensive (both years) | J12 gains AIBDM access |
+| **UCAI → Jan-Mar** | Oct intensive → Jan-Mar elective (both years) | S26 gets elective option |
+| **SCT + Apr** | Add SCT to Apr intensive (both years) | Extra course in shared period |
+
+> [!WARNING]
+> **UCAI → Jan-Mar hurts J12** — it removes UCAI from Oct 27, which J12 needs. Avoid using it alone.
+
+### 3.2 Governance Mechanisms
+
+| Mechanism | Effect | Notes |
+|-----------|--------|-------|
+| **Reserve Seats** (default R=12) | Subtracts R from S26/J16 capacity in J12-accessible slots | See sensitivity analysis in tool |
+| **Cohort Quotas** (50/25/25%) | Each cohort gets a guaranteed share of each shared slot | Less efficient than reservation |
+| **Cohort Caps** (S26: 90, J12: 25) | Limits concentration enrollment | Reduces total demand |
+| **Qualify via 2 Courses** | Qualification bar drops from ~3.7 to 2 courses | Most impactful single lever |
+
+> [!TIP]
+> **Reservation vs Quotas**: Reservation is strictly more efficient — it only constrains cohorts competing with J12 in shared slots, without wasting capacity on J16 who fills from exclusive late slots.
+
+---
+
+## 4. Scenario Summary
+
+> [!IMPORTANT]
+> Lowering the qualification bar from ~3.7 to 2 courses ("Qualify via 2") is the **single most impactful governance lever**.
+
+| Scenario | Qualify via 2 | + Reserve | + Schedule Fix | Result |
+|----------|:---:|:---:|:---:|--------|
+| **Current setup** (104) | — | — | — | 95/104 (J12: 3/12) |
+| **Current setup** | ✓ | — | — | **104/104 (100%)** |
+| **High uptake** (180) | ✓ | — | — | **180/180 (100%)** |
+| **Everyone joins** (233) | ✓ | — | — | 210/233 (J12: 6/29) |
+| **Everyone joins** | ✓ | R=6 | — | 222/233 (J12: 18/29, S26: 150) |
+| **Everyone joins** | ✓ | R=12 | — | 230/233 (J12: 26/29, S26: 150) |
+| **Everyone joins** | ✓ | R=15 | — | **233/233 (100%)** |
+| **Everyone joins** | ✓ | R=12 | Any one of MAIR/AIBDM/SCT | **233/233 (100%)** |
+| **Everyone + Flood** | ✓ | — | — | 173/233 (J12: 0, S26: 119) |
+| **Everyone + Flood** | ✓ | R=6 | — | 173/233 (J12: 12, S26: 107) |
+| **Everyone + Flood** | ✓ | R=12 | — | 173/233 (J12: 24, S26: 95) |
+| **Everyone + Flood** | ✓ | R=12 | SCT | 198/233 (J12: 29, S26: 115) |
+| **Everyone + Flood** | ✓ | R=12 | All fixes | 210/233 (J12: 29, S26: 127) |
+
+**Key takeaways:**
+
+- **Current setup** → "Qualify via 2" alone = 100%. No other levers needed.
+- **High uptake** → "Qualify via 2" alone = 100%.
+- **Everyone joins** → R never costs S26 anything (stays at 150). R=15 or R=12 + one fix = 100%.
+- **Everyone + Flood** → Real tradeoff: each +2R gives J12 ~5 students but costs S26 ~5. Best balance: R=12 + SCT (J12: 29/29, S26: 115/150).
+
+---
+
+## 5. Key Insights
+
+### The Structural Argument
+
+The root cause is **format asymmetry**: J27 12mo has zero elective periods and only 3 accessible intensive periods. Their entire concentration must come from intensives. The default qualification bar (~3.7 courses avg) is nearly impossible for J12 with only 4 accessible courses.
+
+Two key governance levers:
+1. **Qualify via 2 Courses** — lowers the bar so J12's 4 accessible courses are sufficient. Achieves 100% under current setup.
+2. **Reserve Seats** — guarantees J12 capacity in shared slots. Use the sensitivity analysis to find the optimal R.
+
+### J16 is Not the Problem
+
+> [!NOTE]
+> J27 16mo naturally fills from **exclusive late slots** (Jan-Mar 28, Feb 28, Apr 28) and uses zero shared intensive capacity. The real bottleneck is **S26**, who consumes intensive capacity in Apr 27, Oct 27, and Dec 27 before J12 can enroll.
+
+Governance levers (reservation, caps) should target S26's intensive consumption, not J16's behavior.
+
+---
+
+<details>
+<summary><h2>6. How the Math Works (click to expand)</h2></summary>
 
 ### Sets & Indices
 
@@ -97,19 +202,13 @@ $$\widetilde{\text{Cap}}_s = \text{floor}(\overline{\text{Cap}}_s \cdot \text{Po
 | Quota governance active | min(quota, floor(effective capacity × cohort share)) |
 | Otherwise | min(quota, effective capacity) |
 
-Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27 16mo up to 12, and J27 12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
-
-**Seat reservation** (alternative to quotas): Instead of splitting capacity, subtract $R$ seats from non-J12 cohorts in J12-accessible slots:
+**Seat reservation** (alternative to quotas):
 
 | Condition | Reservation-adjusted limit |
 |-----------|---------------------------|
 | J27 12mo | min(quota, effective capacity) — full access |
 | Other cohort, J12-accessible slot | min(quota, effective capacity − R) — reduced |
 | Non-J12 slot | min(quota, effective capacity) — unaffected |
-
-Intuition (reservation): if a slot has 50 effective seats and $R = 12$, then S26 and J27 16mo can each use up to 38, while J27 12mo sees the full 50. Combined, non-J12 cohorts can never take more than 38 — guaranteeing at least 12 remain for J12.
-
-**Reservation vs Quotas**: Reservation is more efficient because it only constrains cohorts that compete with J12 and doesn't waste capacity on cohorts with abundant exclusive slots.
 
 ### Decision Variables
 
@@ -146,11 +245,7 @@ $$\sum_{s \in \mathcal{S}_c} x_{s,c} \geq \text{ceil}(L_c \cdot n_c) \qquad \for
 
 $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$$
 
-Note: Cohort quotas are handled within $\bar{Q}_{s,c}$ — no separate constraint needed. The quota percentages $\alpha_c$ are tunable in the tool (default: S26 50%, J16 25%, J12 25%).
-
 ### Two-Phase Greedy Solver
-
-S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously.
 
 **Phase 1 — S26 (greedy):** Solve for S26 alone, maximizing $n_{S26}$ subject to constraints (1)–(5), consuming capacity from each slot.
 
@@ -176,83 +271,4 @@ Equivalently: each cohort is **capped at its fair-share floor** $\text{floor}(P 
 
 The tool finds $P^*$ via binary search: for each candidate $P$, it runs the two-phase solver with each cohort capped at its floor and checks feasibility.
 
-## Stress Scenarios
-
-| Scenario | S26 | J12 | J16 | Total | Key Risk |
-|----------|-----|-----|-----|-------|----------|
-| **Current setup** | 70 | 12 | 22 | 104 | J12 gets 3/12 without governance |
-| **J26 Flood** | 70 | 12 | 22 | 104 | Previous cohort consumes year-1 slots |
-| **All J12 join** | 70 | 29 | 22 | 121 | 29 students competing for 4 courses |
-| **High uptake** | 110 | 25 | 45 | 180 | Demand exceeds capacity |
-| **Everyone joins** | 150 | 29 | 54 | 233 | Maximum possible demand |
-
-Stress factors stack (except "Everyone joins" which supersedes "All J12 join" and "High uptake").
-
-## Solutions
-
-### Schedule Fixes
-
-Move courses to periods that improve J27 12mo access:
-
-| Fix | Change | Effect |
-|-----|--------|--------|
-| MAIR to Oct intensive | Jan-Mar elective → Oct intensive (both years) | Opens slot in J12's period |
-| AIBDM to Oct intensive | Apr-Jun elective → Oct intensive (both years) | J12 gains AIBDM access |
-| UCAI to Jan-Mar elective | Oct intensive → Jan-Mar elective (both years) | S26 gets elective option |
-| SCT add Apr intensive | Add SCT to Apr intensive (both years) | Extra course in shared period |
-
-### Governance Mechanisms
-
-| Mechanism | Effect | Notes |
-|-----------|--------|-------|
-| **Reserve Seats** (R=12 per course) | Subtracts R from S26/J16 capacity in J12-accessible slots | J12 jumps from 0 to served; see sensitivity analysis |
-| **Cohort Quotas** (S26: 50%, J16: 25%, J12: 25%) | Each cohort gets a guaranteed share of each shared slot | J12 gains access — but total drops (wastes unused quota) |
-| **Cohort Caps** (S26: 90, J12: 25) | Limits concentration enrollment | Reduces total demand |
-| **Qualify via 2 Courses** | Qualification bar drops from ~3.7 to 2 courses | Under current setup: 100% accommodation (104/104) |
-
-**Reservation sensitivity**: The tool includes a sensitivity analysis sweeping R from 0 to 25, showing the per-seat tradeoff between J12 access and S26 impact. Reservation is not zero-sum in students — each reserved seat costs S26 ~1 student but gives J12 ~1-2 students, because J12 has fewer courses and uses capacity more efficiently.
-
-### Combined Solutions
-
-**Reservation vs Quotas**: Reservation is strictly more efficient — it only constrains cohorts competing with J12 in shared slots, without wasting capacity on J16 who has abundant exclusive late slots and never uses shared slot quota.
-
-### Qualify via 2 Courses — Scenario Summary
-
-Lowering the qualification bar from ~3.7 to 2 courses is the single most impactful governance lever. Below shows the minimum configuration needed to serve everyone under each scenario.
-
-| Scenario | Qualify via 2 | + Reserve | + Schedule Fix | Result |
-|----------|:---:|:---:|:---:|--------|
-| **Current setup** (104 students) | — | — | — | 95/104 (J12: 3/12) |
-| **Current setup** | ✓ | — | — | **104/104 (100%)** |
-| **High uptake** (180 students) | ✓ | — | — | **180/180 (100%)** |
-| **Everyone joins** (233 students) | ✓ | — | — | 210/233 (J12: 6/29) |
-| **Everyone joins** | ✓ | R=12 | — | 230/233 (J12: 26/29, S26: 150) |
-| **Everyone joins** | ✓ | R=15 | — | **233/233 (100%)** |
-| **Everyone joins** | ✓ | R=12 | Any one of MAIR/AIBDM/SCT | **233/233 (100%)** |
-| **Everyone + J26 Flood** | ✓ | — | — | 173/233 (J12: 0/29, S26: 119/150) |
-| **Everyone + J26 Flood** | ✓ | R=12 | — | 173/233 (J12: 24/29, S26: 95/150) |
-| **Everyone + J26 Flood** | ✓ | R=12 | SCT | 198/233 (J12: 29/29, S26: 115/150) |
-| **Everyone + J26 Flood** | ✓ | R=12 | All fixes | 210/233 (J12: 29/29, S26: 127/150) |
-
-**Key takeaways:**
-- **Current setup**: "Qualify via 2" alone achieves 100%. No other levers needed.
-- **High uptake**: "Qualify via 2" alone achieves 100%.
-- **Everyone joins**: S26 and J16 are never impacted by reservation — R only trades J12 seats. R=15 or R=12 + any single fix (MAIR/AIBDM/SCT) = 100%.
-- **Everyone + J26 Flood** (worst case): Reservation has a real S26 cost here. Each +2R gives J12 ~5 students but costs S26 ~5. R=12 + SCT is a good balance (J12: 29/29, S26: 115/150). All fixes push S26 to 127/150.
-- **UCAI→Jan-Mar hurts J12** — it removes UCAI from Oct 27, which J12 needs. Avoid using it alone.
-
-### The Structural Argument
-
-The root cause is **format asymmetry**: J27 12mo has zero elective periods and only 3 accessible intensive periods. Their entire concentration must come from intensives. The default qualification bar (~3.7 courses avg) is nearly impossible for J12 with only 4 accessible courses.
-
-Two key governance levers:
-1. **Qualify via 2 Courses** — lowers the bar so J12's 4 accessible courses are sufficient. Achieves 100% under current setup.
-2. **Reserve Seats** — guarantees J12 capacity in shared slots. Use the sensitivity analysis to find the optimal R that balances J12 access vs S26 impact.
-
-### J16 is Not the Problem
-
-Analysis shows J27 16mo naturally fills from **exclusive elective and late intensive slots** (Jan-Mar 28, Feb 28, Apr 28) and does not compete with J12 in shared intensive periods. Under all stress scenarios tested, J16 uses zero shared intensive slots — their 4 courses come entirely from exclusive periods.
-
-**The real bottleneck is S26**, who consumes intensive capacity in Apr 27, Oct 27, and Dec 27 before J12 can enroll. Governance levers (reservation, caps) should target S26's intensive consumption, not J16's behavior.
-
-Note: SCT (Supply Chain Transformation) is not in the default course schedule but can be added via the "SCT: + add Apr intensive" toggle.
+</details>
