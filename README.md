@@ -161,6 +161,22 @@ The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequ
 
 With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 4/9.
 
+## Previous Consumption (Carry-over from S25/J26)
+
+Seats already consumed by non-concentration students in year 1 slots (per admin data, Apr 2026):
+
+| Course | Period | Format | Prev Seats | Notes |
+|--------|--------|--------|-----------|-------|
+| UCAI | Oct 26 | Intensive | 24 | |
+| PIDT | Dec 26 | Intensive | 30 | |
+| AIFU | Dec 26 | Intensive | 15 | |
+| MAIR | Jan-Mar 27 | Elective | 38 | 50 total last year; assuming 12 reserved for S26 |
+| TESP | Jan-Mar 27 | Elective | 15 | No confirmed data; estimate |
+| DDDM | Jan-Mar 27 | Elective | 35 | |
+| MAIR | Feb 27 | Intensive | 12 | Corrected: 12 from prev intensive, not 50 |
+
+Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fresh offerings.
+
 ## Breaking Points
 
 ### Under Current Setup (70 S26, 12 J12, 22 J16 = 104 total)
@@ -220,7 +236,27 @@ Move courses to periods that improve J27 12mo access:
 
 **Reservation vs Quotas**: Reservation is strictly more efficient — it only constrains cohorts competing with J12 in shared slots, without wasting capacity on J16 who has abundant exclusive late slots and never uses shared slot quota.
 
-**Qualify via 2 Courses**: Under current setup (no stress), lowering the qualification bar from ~3.7 to 2 courses achieves 100% accommodation (104/104). This is the single most impactful governance lever for J12, who have only 4 accessible courses.
+### Qualify via 2 Courses — Scenario Summary
+
+Lowering the qualification bar from ~3.7 to 2 courses is the single most impactful governance lever. Below shows the minimum configuration needed to serve everyone under each scenario.
+
+| Scenario | Qualify via 2 | + Reserve | + Schedule Fixes | Result |
+|----------|:---:|:---:|:---:|--------|
+| **Current setup** (104 students) | ✓ | — | — | **104/104 (100%)** |
+| **High uptake** (180 students) | ✓ | — | — | 166/180 (J12: 11/25) |
+| **High uptake** | ✓ | R=12 | — | **180/180 (100%)** |
+| **Everyone joins** (233 students) | ✓ | — | — | 204/233 (J12: 0/29) |
+| **Everyone joins** | ✓ | R=12 | — | 228/233 (J12: 24/29) |
+| **Everyone joins** | ✓ | R=15 | — | **233/233 (100%)** |
+| **Everyone joins** | ✓ | R=12 | All fixes | **233/233 (100%)** |
+| **Everyone + J26 Flood** | ✓ | — | — | 173/233 (J12: 0/29) |
+| **Everyone + J26 Flood** | ✓ | R=12 | All fixes | 210/233 (J12: 29/29, S26: 127/150) |
+
+**Key takeaways:**
+- **Current setup**: "Qualify via 2" alone achieves 100%. No other levers needed.
+- **High uptake**: "Qualify via 2" + Reserve 12 seats = 100%.
+- **Everyone joins**: "Qualify via 2" + Reserve 15 seats = 100%, or Reserve 12 + all schedule fixes = 100%.
+- **Everyone + J26 Flood** (worst case): Even with all levers, 100% is not achievable. S26 drops to 127/150. J12 can be fully served with reserve + fixes.
 
 ### The Structural Argument
 

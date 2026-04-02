@@ -100,6 +100,7 @@
       <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="j26_flood" onclick="toggleStress(this)">J26 Flood</button>
       <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="j12_all" onclick="toggleStress(this)">All J27 12mo join</button>
       <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="high_uptake" onclick="toggleStress(this)">High uptake</button>
+      <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="all_in" onclick="toggleStress(this)">Everyone joins</button>
     </div>
     <div style="font-size:11px;font-weight:600;color:#16a34a;margin:10px 0 6px;">Schedule Fixes <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
     <div class="scenario-bar" id="fixBar">
@@ -358,10 +359,10 @@ const DEFAULT_CAPS = {
 
 // Default prev consumption (only for first-year offerings where previous cohort took seats)
 const DEFAULT_PREV = {
-  'ucai_oct26': 30, 'pidt_dec26': 30, 'aifu_dec26': 40,
-  // J26 16mo still taking Jan-Mar 27 and Feb 27 courses (~30 J26 in concentration)
-  'mair_janmar27': 20, 'tesp_janmar27': 25, 'dddm_janmar27': 20,
-  'mair_feb27': 15
+  // Real carry-over from S25/J26 (per admin data, Apr 2026)
+  'ucai_oct26': 24, 'pidt_dec26': 30, 'aifu_dec26': 15,
+  'mair_janmar27': 38, 'tesp_janmar27': 15, 'dddm_janmar27': 35,
+  'mair_feb27': 12  // MAIR: 50 total last year, 12 intensive + 38 elective (assuming 12 reserved for S26)
 };
 
 // Default popularity per course (100% = all students want it)
@@ -618,7 +619,7 @@ function setLoadInputs(co, n3, n4, n5, n6) {
 }
 
 // ===== COMPOSABLE SCENARIO STATE =====
-let activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
+let activeStress = { j26_flood: false, j12_all: false, high_uptake: false, all_in: false };
 let activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
 let activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
 
@@ -626,6 +627,17 @@ function toggleStress(btn) {
   const stress = btn.dataset.stress;
   activeStress[stress] = !activeStress[stress];
   btn.classList.toggle('toggle-on', activeStress[stress]);
+  // "Everyone joins" supersedes "All J12 join" and "High uptake"
+  if (stress === 'all_in' && activeStress.all_in) {
+    ['j12_all', 'high_uptake'].forEach(k => {
+      activeStress[k] = false;
+      document.querySelector(`[data-stress="${k}"]`).classList.remove('toggle-on');
+    });
+  }
+  if ((stress === 'j12_all' || stress === 'high_uptake') && activeStress[stress] && activeStress.all_in) {
+    activeStress.all_in = false;
+    document.querySelector('[data-stress="all_in"]').classList.remove('toggle-on');
+  }
   applyCombo();
 }
 
@@ -676,6 +688,14 @@ function applyCombo() {
   if (activeStress.j12_all) {
     nJ12 = 29; // all 29 join — always overrides to max
     loadJ12 = [16,8,3,2];
+  }
+  if (activeStress.all_in) {
+    nS26 = totS26;  // 150
+    nJ12 = totJ12;  // 29
+    nJ16 = totJ16;  // 54
+    loadS26 = [85,43,15,7];
+    loadJ12 = [16,8,3,2];
+    loadJ16 = [29,15,7,3];
   }
 
   setCohortInputs(totS26, nS26, totJ12, nJ12, totJ16, nJ16);
@@ -758,7 +778,7 @@ function applyCombo() {
 
   // Update combo label
   const parts = [];
-  const stressLabels = { j26_flood:'J26 Flood', j12_all:'All J12 join', high_uptake:'High uptake' };
+  const stressLabels = { j26_flood:'J26 Flood', j12_all:'All J12 join', high_uptake:'High uptake', all_in:'Everyone joins' };
   const anyStress = Object.values(activeStress).some(v => v);
   if (!anyStress) parts.push('Current Setup');
   Object.keys(activeStress).forEach(k => { if (activeStress[k]) parts.push(stressLabels[k]); });
@@ -786,7 +806,7 @@ function applyCombo() {
 
 function resetScenario() {
   // Reset all toggles
-  activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
+  activeStress = { j26_flood: false, j12_all: false, high_uptake: false, all_in: false };
   activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
   activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
   document.getElementById('reservePanel').style.display = 'none';
