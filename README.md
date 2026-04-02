@@ -8,13 +8,18 @@ The Tech & AI concentration serves three cohorts with different enrollment timel
 
 | Cohort | Timeline | Accessible Periods |
 |--------|----------|-------------------|
-| **S26 16mo** | Starts Sep 2026, graduates Dec 2027 | Dec 26, Jan-Mar 27, Feb 27, Apr-Jun 27, Apr 27, Dec 27 |
+| **S26 16mo** | Starts Sep 2026, graduates Dec 2027 | Dec 26, Jan-Mar 27, Feb 27, Apr-Jun 27, Apr 27, Oct 27, Dec 27 |
 | **J27 12mo** | Starts Jan 2027, graduates Dec 2027 | Apr 27, Oct 27, Dec 27 |
-| **J27 16mo** | Starts Jan 2027, graduates Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Apr 28 |
+| **J27 16mo** | Starts Jan 2027, graduates Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Feb 28, Apr 28 |
 
 Enrollment is **sequential**: S26 enrolls first, then J27 16mo, then J27 12mo. Later cohorts get whatever capacity remains.
 
-**Period constraints**: Sep intake cannot access Oct intensives; Jan intake cannot access Feb intensives. This further limits J27 12mo to just 3 intensive periods and 4 accessible courses. They enroll last and compete for seats with larger cohorts.
+**Period constraints** (per admin rolling rule): each cohort skips its first intensive after enrollment, then is eligible for all subsequent intensives until graduation. This means:
+- Sep intake: blocked from Oct intensive (first after enrollment), open from Dec onward
+- Jan intake: blocked from Feb intensive (first after enrollment), open from Apr onward
+- In year 2, the pattern repeats with cohorts shifted: S26 and J27 become "established" and regain access to Oct and Feb respectively
+
+This gives J27 12mo just 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They enroll last and compete for seats with larger cohorts.
 
 ## How the Math Works
 
@@ -150,11 +155,11 @@ The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequ
 | Generative AI for Management (GAIM) | Intensive | 40 | |
 
 **Course accessibility by cohort** (default schedule, without SCT):
-- **S26**: 7 of 8 courses (misses courses only in Oct/post-graduation periods)
-- **J27 16mo**: 7 of 8
+- **S26**: 8 of 8 courses (full access including Oct 27 in year 2)
+- **J27 16mo**: 7 of 8 (misses AIBDM — only in Apr-Jun elective)
 - **J27 12mo**: 4 of 8 (only intensives in Apr 27, Oct 27, Dec 27 — no elective access)
 
-With SCT added: 9 courses total. S26: 7/9, J16: 7/9, J12: 4/9.
+With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 4/9.
 
 ## Breaking Points
 
@@ -224,5 +229,11 @@ The root cause is **format asymmetry**: J27 12mo has zero elective periods and o
 Two key governance levers:
 1. **Qualify via 2 Courses** — lowers the bar so J12's 4 accessible courses are sufficient. Achieves 100% under current setup.
 2. **Reserve Seats** — guarantees J12 capacity in shared slots. Use the sensitivity analysis to find the optimal R that balances J12 access vs S26 impact.
+
+### J16 is Not the Problem
+
+Analysis shows J27 16mo naturally fills from **exclusive elective and late intensive slots** (Jan-Mar 28, Feb 28, Apr 28) and does not compete with J12 in shared intensive periods. Under all stress scenarios tested, J16 uses zero shared intensive slots — their 4 courses come entirely from exclusive periods.
+
+**The real bottleneck is S26**, who consumes intensive capacity in Apr 27, Oct 27, and Dec 27 before J12 can enroll. Governance levers (reservation, caps) should target S26's intensive consumption, not J16's behavior.
 
 Note: SCT (Supply Chain Transformation) is not in the default course schedule but can be added via the "SCT: + add Apr intensive" toggle.
