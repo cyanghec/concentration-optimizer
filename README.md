@@ -16,6 +16,43 @@ The Tech & AI concentration serves three cohorts with different enrollment timel
 
 **The structural tension**: J27 12mo has only 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They compete for seats with larger cohorts.
 
+### The 9 Courses
+
+| Course | Format | Cap | Notes |
+|--------|--------|-----|-------|
+| User-centric AI Product Design (UCAI) | Intensive/Elective | 50 | |
+| Product Innovation through Design Thinking (PIDT) | Intensive/Elective | 36 | 30 as elective |
+| AI Fundamentals (AIFU) | Intensive | 50 | |
+| Managing AI Responsibly (MAIR) | Intensive/Elective | 50 | |
+| Tech Sprints (TESP) | Elective only | 50 | |
+| Data Driven Decision Making (DDDM) | Elective only | 50 | Cannot be intensive |
+| AI for Business Decision Making (AIBDM) | Elective/Intensive | 35 | |
+| Supply Chain Transformation (SCT) | Intensive | 50 | Not in default schedule; available as fix |
+| Generative AI for Management (GAIM) | Intensive | 40 | |
+
+**Course accessibility by cohort** (default schedule, without SCT):
+- **S26**: 8 of 8 courses (full access including Oct 27 in year 2)
+- **J27 16mo**: 7 of 8 (misses AIBDM — only in Apr-Jun elective)
+- **J27 12mo**: 4 of 8 (only intensives in Apr 27, Oct 27, Dec 27 — no elective access)
+
+With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 5/9.
+
+### Previous Consumption (Carry-over from S25/J26)
+
+Seats already consumed by non-concentration students in year 1 slots (per admin data, Apr 2026):
+
+| Course | Period | Format | Prev Seats | Notes |
+|--------|--------|--------|-----------|-------|
+| UCAI | Oct 26 | Intensive | 24 | |
+| PIDT | Dec 26 | Intensive | 30 | |
+| AIFU | Dec 26 | Intensive | 15 | |
+| MAIR | Jan-Mar 27 | Elective | 38 | 50 total last year; assuming 12 reserved for S26 |
+| TESP | Jan-Mar 27 | Elective | 15 | No confirmed data; estimate |
+| DDDM | Jan-Mar 27 | Elective | 35 | |
+| MAIR | Feb 27 | Intensive | 12 | Corrected: 12 from prev intensive, not 50 |
+
+Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fresh offerings.
+
 ## How the Math Works
 
 ### Sets & Indices
@@ -138,43 +175,6 @@ plus all constraints (1)–(5).
 Equivalently: each cohort is **capped at its fair-share floor** $\text{floor}(P / 100 \cdot N_c)$, preventing early cohorts from consuming capacity that later cohorts need.
 
 The tool finds $P^*$ via binary search: for each candidate $P$, it runs the two-phase solver with each cohort capped at its floor and checks feasibility.
-
-## The 9 Courses
-
-| Course | Format | Cap | Notes |
-|--------|--------|-----|-------|
-| User-centric AI Product Design (UCAI) | Intensive/Elective | 50 | |
-| Product Innovation through Design Thinking (PIDT) | Intensive/Elective | 36 | 30 as elective |
-| AI Fundamentals (AIFU) | Intensive | 50 | |
-| Managing AI Responsibly (MAIR) | Intensive/Elective | 50 | |
-| Tech Sprints (TESP) | Elective only | 50 | |
-| Data Driven Decision Making (DDDM) | Elective only | 50 | Cannot be intensive |
-| AI for Business Decision Making (AIBDM) | Elective/Intensive | 35 | |
-| Supply Chain Transformation (SCT) | Intensive | 50 | Not in default schedule; available as fix |
-| Generative AI for Management (GAIM) | Intensive | 40 | |
-
-**Course accessibility by cohort** (default schedule, without SCT):
-- **S26**: 8 of 8 courses (full access including Oct 27 in year 2)
-- **J27 16mo**: 7 of 8 (misses AIBDM — only in Apr-Jun elective)
-- **J27 12mo**: 4 of 8 (only intensives in Apr 27, Oct 27, Dec 27 — no elective access)
-
-With SCT added: 9 courses total. S26: 9/9, J16: 8/9, J12: 5/9.
-
-## Previous Consumption (Carry-over from S25/J26)
-
-Seats already consumed by non-concentration students in year 1 slots (per admin data, Apr 2026):
-
-| Course | Period | Format | Prev Seats | Notes |
-|--------|--------|--------|-----------|-------|
-| UCAI | Oct 26 | Intensive | 24 | |
-| PIDT | Dec 26 | Intensive | 30 | |
-| AIFU | Dec 26 | Intensive | 15 | |
-| MAIR | Jan-Mar 27 | Elective | 38 | 50 total last year; assuming 12 reserved for S26 |
-| TESP | Jan-Mar 27 | Elective | 15 | No confirmed data; estimate |
-| DDDM | Jan-Mar 27 | Elective | 35 | |
-| MAIR | Feb 27 | Intensive | 12 | Corrected: 12 from prev intensive, not 50 |
-
-Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fresh offerings.
 
 ## Stress Scenarios
 
