@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech & AI Concentration — Seat Allocation Optimizer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a1a; padding: 20px; }
+  .container { max-width: 1300px; margin: 0 auto; }
+  h1 { font-size: 22px; color: #1F4E79; margin-bottom: 4px; }
+  h2 { font-size: 16px; color: #1F4E79; margin: 20px 0 10px; }
+  .subtitle { color: #666; font-size: 13px; margin-bottom: 20px; }
+  .panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .cohort-inputs { display: flex; gap: 16px; flex-wrap: wrap; }
+  .cohort-box { flex: 1; min-width: 250px; background: #f8f9fa; border-radius: 8px; padding: 16px; }
+  .cohort-box h3 { font-size: 14px; margin-bottom: 8px; }
+  .input-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .input-row label { font-size: 12px; color: #555; min-width: 120px; }
+  .input-sm { width: 55px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; text-align: center; font-size: 13px; }
+  .derived { font-size: 13px; font-weight: 700; color: #1F4E79; margin-top: 4px; padding: 6px 8px; background: #e0e7ff; border-radius: 4px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1F4E79; color: white; padding: 8px 6px; text-align: center; font-weight: 600; }
+  th:nth-child(1), th:nth-child(2) { text-align: left; }
+  td { padding: 5px 4px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+  td:nth-child(1), td:nth-child(2) { text-align: left; }
+  .cap-input { width: 50px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 4px; text-align: center; font-size: 12px; }
+  .prev-input { width: 50px; padding: 3px 6px; border: 1px solid #fbbf24; border-radius: 4px; text-align: center; font-size: 12px; background: #fefce8; }
+  .quota-input { width: 50px; padding: 3px 6px; border: 1px solid #93c5fd; border-radius: 4px; text-align: center; font-size: 12px; background: #eff6ff; }
+  .quota-input.zero { background: #fef2f2; border-color: #fca5a5; color: #999; }
+  .quota-input.has-val { background: #dcfce7; border-color: #86efac; font-weight: 700; }
+  .eff-cap { font-weight: 700; }
+  .eff-cap.tight { color: #dc2626; }
+  .eff-cap.ok { color: #16a34a; }
+  .btn { background: #2563eb; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+  .btn:hover { background: #1d4ed8; }
+  .btn.secondary { background: #6b7280; margin-left: 8px; }
+  .btn.secondary:hover { background: #4b5563; }
+  .results { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+  .result-card { flex: 1; min-width: 200px; border-radius: 10px; padding: 20px; text-align: center; }
+  .result-card.safe { background: #dcfce7; border: 2px solid #16a34a; }
+  .result-card.warning { background: #fefce8; border: 2px solid #eab308; }
+  .result-card.danger { background: #fef2f2; border: 2px solid #dc2626; }
+  .result-num { font-size: 42px; font-weight: 800; }
+  .result-card.safe .result-num { color: #16a34a; }
+  .result-card.warning .result-num { color: #eab308; }
+  .result-card.danger .result-num { color: #dc2626; }
+  .result-label { font-size: 12px; color: #666; margin-top: 2px; }
+  .result-detail { font-size: 13px; margin-top: 8px; font-weight: 600; }
+  .alloc-val { font-weight: 700; }
+  .alloc-val.active { color: #2563eb; background: #eff6ff; border-radius: 4px; padding: 2px 6px; }
+  .alloc-val.zero { color: #ccc; }
+  .bottleneck { background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 12px; font-size: 13px; }
+  .suggestion { background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 8px; font-size: 13px; }
+  .total-bar { margin-top: 12px; font-size: 15px; font-weight: 700; text-align: center; padding: 12px; border-radius: 8px; }
+  .total-bar.good { background: #dcfce7; color: #16a34a; }
+  .total-bar.bad { background: #fef2f2; color: #dc2626; }
+  .scenario-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .scenario-btn { padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; cursor: pointer; background: white; transition: all 0.15s; }
+  .scenario-btn:hover { background: #f3f4f6; }
+  .scenario-btn.active { background: #2563eb; color: white !important; border-color: #2563eb; }
+  .scenario-btn.toggle-on { background: #f0fdf4; font-weight: 600; border-width: 2px; }
+  .legend { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: #666; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .sens-table td, .sens-table th { padding: 6px 10px; font-size: 13px; }
+  .sens-table tr.current { background: #eff6ff; font-weight: 700; }
+  .sens-safe { color: #16a34a; font-weight: 700; }
+  .sens-danger { color: #dc2626; font-weight: 700; }
+  .sens-warning { color: #eab308; font-weight: 700; }
+  .threshold-box { background: #fef2f2; border: 2px solid #dc2626; border-radius: 10px; padding: 16px; text-align: center; margin-top: 12px; }
+  .threshold-num { font-size: 36px; font-weight: 800; color: #dc2626; }
+  .threshold-label { font-size: 13px; color: #666; }
+  .cal-table td, .cal-table th { padding: 5px 8px; font-size: 12px; }
+  .cal-table th { font-size: 11px; }
+  .period-check { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
+  .period-check:disabled { cursor: default; opacity: 0.3; }
+  .cal-course { font-weight: 600; font-size: 13px; }
+  .cal-fmt { font-size: 10px; color: #888; }
+  .load-grid { display: grid; grid-template-columns: auto repeat(4, 55px); gap: 4px 8px; align-items: center; font-size: 12px; }
+  .load-grid .hdr { font-weight: 600; color: #555; text-align: center; }
+  .load-grid .co-label { font-weight: 600; color: #1F4E79; }
+  .load-sm { width: 50px; padding: 3px 4px; border: 1px solid #d1d5db; border-radius: 4px; text-align: center; font-size: 12px; }
+  .load-info { font-size: 11px; color: #888; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Tech & AI Concentration — Seat Allocation Optimizer</h1>
+  <p class="subtitle">Set cohort parameters, schedule courses across periods, then optimize. Includes sensitivity analysis.</p>
+
+  <div class="panel">
+    <h2>Scenarios</h2>
+    <p style="font-size:11px;color:#888;margin-bottom:8px;">Pick a base scenario, then toggle schedule fixes and governance options. Combinations apply automatically.</p>
+    <div class="scenario-bar" style="margin-bottom:10px;">
+      <button class="scenario-btn" style="border-color:#6b7280;color:#374151;" onclick="resetScenario()">Current Setup</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#dc2626;margin:0 0 6px;">Stress Factors <span style="font-weight:400;color:#888;">(toggle any — they stack)</span>:</div>
+    <div class="scenario-bar" id="stressBar">
+      <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="j26_flood" onclick="toggleStress(this)">J26 Flood</button>
+      <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="j12_all" onclick="toggleStress(this)">All J27 12mo join</button>
+      <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="high_uptake" onclick="toggleStress(this)">High uptake</button>
+      <button class="scenario-btn" style="border-color:#f97316;color:#c2410c;--toggle-color:#f97316;" data-stress="all_in" onclick="toggleStress(this)">Everyone joins</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#16a34a;margin:10px 0 6px;">Schedule Fixes <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
+    <div class="scenario-bar" id="fixBar">
+      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="mair" onclick="toggleFix(this)">MAIR: Jan-Mar &rarr; Oct</button>
+      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="aibdm" onclick="toggleFix(this)">AIBDM: Apr-Jun &rarr; Oct</button>
+      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="ucai" onclick="toggleFix(this)">UCAI: Oct &rarr; Jan-Mar</button>
+      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="sct" onclick="toggleFix(this)">SCT: + add Apr intensive</button>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#059669;margin:10px 0 6px;">Governance <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
+    <div class="scenario-bar" id="govBar">
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="reserve" onclick="toggleGov(this)">Reserve Seats for J27 12mo</button>
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="quotas" onclick="toggleGov(this)">Cohort Quotas</button>
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="caps" onclick="toggleGov(this)">Cohort Caps (S26: 90, J27 12mo: 25)</button>
+      <button class="scenario-btn" style="border-color:#059669;color:#059669;--toggle-color:#059669;" data-gov="intensive2" onclick="toggleGov(this)">Qualify via 2 Courses</button>
+    </div>
+    <div id="reservePanel" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+      <div style="font-size:11px;font-weight:600;color:#059669;margin-bottom:6px;">Seats reserved per course for J27 12mo <span style="font-weight:400;color:#888;">(subtracted from S26 & J16 capacity in shared slots)</span></div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <label style="font-size:12px;">Reserve: <input class="input-sm" type="number" id="reserveSeats" value="12" min="0" max="50" onchange="applyCombo()"> seats</label>
+      </div>
+    </div>
+    <div id="quotaPanel" style="display:none;margin-top:8px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+      <div style="font-size:11px;font-weight:600;color:#059669;margin-bottom:6px;">Quota % per cohort <span style="font-weight:400;color:#888;">(share of each slot's effective capacity)</span></div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:12px;">S26: <input class="input-sm" type="number" id="quotaPct_S26" value="50" min="0" max="100" onchange="applyCombo()">%</label>
+        <label style="font-size:12px;">J27 16mo: <input class="input-sm" type="number" id="quotaPct_J27_16" value="25" min="0" max="100" onchange="applyCombo()">%</label>
+        <label style="font-size:12px;">J27 12mo: <input class="input-sm" type="number" id="quotaPct_J27_12" value="25" min="0" max="100" onchange="applyCombo()">%</label>
+        <span id="quotaPctTotal" style="font-size:11px;color:#888;"></span>
+      </div>
+    </div>
+    <div id="comboLabel" style="font-size:11px;color:#6b7280;margin-top:4px;"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Cohort Parameters</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">Set total cohort size, concentration count, and course load distribution per cohort.</p>
+    <div class="cohort-inputs">
+      <div class="cohort-box">
+        <h3>S26 16mo <span style="font-weight:400;color:#888">(Sep 26 intake)</span></h3>
+        <div class="input-row"><label>Total in cohort:</label><input class="input-sm" type="number" id="tot_S26" value="150" min="0" onchange="updateDerived()"></div>
+        <div class="input-row"><label>In concentration:</label><input class="input-sm" type="number" id="n_S26" value="70" min="0" onchange="updateDerived()"></div>
+        <div style="margin-top:8px;font-size:11px;color:#555;font-weight:600;">Course load:</div>
+        <div style="display:grid;grid-template-columns:auto 50px;gap:2px 6px;font-size:11px;margin-top:4px;">
+          <span>3 courses:</span><input class="load-sm" type="number" id="load_S26_3" value="40" min="0" onchange="updateDerived()">
+          <span>4 courses:</span><input class="load-sm" type="number" id="load_S26_4" value="20" min="0" onchange="updateDerived()">
+          <span>5 courses:</span><input class="load-sm" type="number" id="load_S26_5" value="7" min="0" onchange="updateDerived()">
+          <span>6 courses:</span><input class="load-sm" type="number" id="load_S26_6" value="3" min="0" onchange="updateDerived()">
+        </div>
+        <div class="load-info" id="loadInfo_S26"></div>
+      </div>
+      <div class="cohort-box">
+        <h3>J27 12mo <span style="font-weight:400;color:#888">(Jan 27 intake)</span></h3>
+        <div class="input-row"><label>Total in cohort:</label><input class="input-sm" type="number" id="tot_J27_12" value="29" min="0" onchange="updateDerived()"></div>
+        <div class="input-row"><label>In concentration:</label><input class="input-sm" type="number" id="n_J27_12" value="12" min="0" onchange="updateDerived()"></div>
+        <div style="margin-top:8px;font-size:11px;color:#555;font-weight:600;">Course load:</div>
+        <div style="display:grid;grid-template-columns:auto 50px;gap:2px 6px;font-size:11px;margin-top:4px;">
+          <span>3 courses:</span><input class="load-sm" type="number" id="load_J27_12_3" value="6" min="0" onchange="updateDerived()">
+          <span>4 courses:</span><input class="load-sm" type="number" id="load_J27_12_4" value="4" min="0" onchange="updateDerived()">
+          <span>5 courses:</span><input class="load-sm" type="number" id="load_J27_12_5" value="2" min="0" onchange="updateDerived()">
+          <span>6 courses:</span><input class="load-sm" type="number" id="load_J27_12_6" value="0" min="0" onchange="updateDerived()">
+        </div>
+        <div class="load-info" id="loadInfo_J27_12"></div>
+      </div>
+      <div class="cohort-box">
+        <h3>J27 16mo <span style="font-weight:400;color:#888">(Jan 27 intake)</span></h3>
+        <div class="input-row"><label>Total in cohort:</label><input class="input-sm" type="number" id="tot_J27_16" value="54" min="0" onchange="updateDerived()"></div>
+        <div class="input-row"><label>In concentration:</label><input class="input-sm" type="number" id="n_J27_16" value="22" min="0" onchange="updateDerived()"></div>
+        <div style="margin-top:8px;font-size:11px;color:#555;font-weight:600;">Course load:</div>
+        <div style="display:grid;grid-template-columns:auto 50px;gap:2px 6px;font-size:11px;margin-top:4px;">
+          <span>3 courses:</span><input class="load-sm" type="number" id="load_J27_16_3" value="12" min="0" onchange="updateDerived()">
+          <span>4 courses:</span><input class="load-sm" type="number" id="load_J27_16_4" value="6" min="0" onchange="updateDerived()">
+          <span>5 courses:</span><input class="load-sm" type="number" id="load_J27_16_5" value="3" min="0" onchange="updateDerived()">
+          <span>6 courses:</span><input class="load-sm" type="number" id="load_J27_16_6" value="1" min="0" onchange="updateDerived()">
+        </div>
+        <div class="load-info" id="loadInfo_J27_16"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Course Calendar — Schedule Courses to Periods</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:6px;">
+      Check the periods where each course is offered. <strong>Intensives</strong> can only appear in intensive weeks.
+      <strong>Electives</strong> can appear in either semester window. Toggle to experiment with scheduling (e.g., move Michael's course to Oct).
+    </p>
+    <div style="overflow-x:auto; margin-top: 10px;">
+      <table class="cal-table" id="calTable"></table>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:6px;">
+      Intensive periods: Oct 26, Dec 26, Feb 27, Apr 27, Oct 27, Dec 27, Feb 28, Apr 28.
+      Elective semesters: Jan-Mar 27, Apr-Jun 27, Jan-Mar 28, Apr-Jun 28.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Generated Slots — Caps, Quotas & Availability</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:6px;">
+      Auto-generated from calendar above. Edit <strong>Cap</strong>, <strong>Prev</strong> (previous cohort consumption), and per-cohort <strong>Quotas</strong>.
+      <strong>0</strong> = blocked. <strong>Blank</strong> = no limit.
+    </p>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch" style="background:#dcfce7;border:1px solid #86efac;"></span> Has quota</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#fef2f2;border:1px solid #fca5a5;"></span> Blocked (0)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#eff6ff;border:1px solid #93c5fd;"></span> No limit</div>
+    </div>
+    <div style="overflow-x:auto; margin-top: 10px;">
+      <table><thead><tr>
+        <th style="width:25px">#</th>
+        <th style="width:210px">Course</th>
+        <th style="width:110px">Period</th>
+        <th style="width:55px">Format</th>
+        <th style="width:45px">Cap</th>
+        <th style="width:45px">Prev</th>
+        <th style="width:45px">Pop%</th>
+        <th style="width:50px">Eff Cap</th>
+        <th style="width:65px">S26 16mo<br><span style="font-weight:400;font-size:10px">quota</span></th>
+        <th style="width:65px">J27 12mo<br><span style="font-weight:400;font-size:10px">quota</span></th>
+        <th style="width:65px">J27 16mo<br><span style="font-weight:400;font-size:10px">quota</span></th>
+      </tr></thead><tbody id="slotBody"></tbody></table>
+    </div>
+    <div id="quotaWarning" style="display:none;color:#dc2626;font-size:12px;margin-top:6px;padding:8px 12px;background:#fef2f2;border-radius:6px;"></div>
+    <div style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button class="btn" onclick="solve('max')">Maximize Total</button>
+      <button class="btn" style="background:#7c3aed;" onclick="solve('fair')">Equalize Fairness</button>
+      <button class="btn secondary" onclick="runSensitivity()">Sensitivity Analysis</button>
+      <button class="btn secondary" onclick="resetScenario()">Reset</button>
+    </div>
+  </div>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <h2>Results</h2>
+    <div class="results" id="resultCards"></div>
+    <div id="totalBar"></div>
+    <div id="fairnessBar"></div>
+    <div id="insights"></div>
+
+    <h2 style="margin-top:20px;">Optimal Allocation by Slot</h2>
+    <div style="overflow-x:auto;">
+      <table><thead><tr>
+        <th style="text-align:left">Course</th>
+        <th style="text-align:left">Period</th>
+        <th>Eff Cap</th>
+        <th>S26</th>
+        <th>J27 12</th>
+        <th>J27 16</th>
+        <th>Used</th>
+        <th>Left</th>
+      </tr></thead><tbody id="allocBody"></tbody></table>
+    </div>
+
+    <h2 style="margin-top:20px;">Per Unique Course</h2>
+    <div style="overflow-x:auto;">
+      <table><thead><tr>
+        <th style="text-align:left">Course</th>
+        <th>S26</th>
+        <th>J27 12</th>
+        <th>J27 16</th>
+        <th>Total</th>
+      </tr></thead><tbody id="courseBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel" id="sensPanel" style="display:none;">
+    <h2>Sensitivity Analysis — J27 Concentration Size</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">
+      Sweeps total J27 concentration students from 5 to 80 (keeping your 12mo/16mo ratio), with S26 fixed.
+      Shows where the system breaks.
+    </p>
+    <div id="thresholdBox"></div>
+    <div style="overflow-x:auto; margin-top: 12px;">
+      <table class="sens-table"><thead><tr>
+        <th>J27 in Conc.</th>
+        <th>J27 12mo in conc.</th>
+        <th>J27 16mo in conc.</th>
+        <th>S26 served</th>
+        <th>J27 12mo served</th>
+        <th>J27 16mo served</th>
+        <th>Total served</th>
+        <th>Total needed</th>
+        <th>Status</th>
+      </tr></thead><tbody id="sensBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel" id="reserveSensPanel" style="display:none;">
+    <h2>Sensitivity Analysis — Reserve Seats for J27 12mo</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:12px;">
+      Sweeps reserved seats from 0 to 25. Shows the tradeoff between J12 access and S26 impact.
+    </p>
+    <div id="reserveThresholdBox"></div>
+    <div style="overflow-x:auto; margin-top: 12px;">
+      <table class="sens-table"><thead><tr>
+        <th>Reserved</th>
+        <th>S26 served</th>
+        <th>J27 12mo served</th>
+        <th>J27 16mo served</th>
+        <th>Total served</th>
+        <th>Total needed</th>
+        <th>S26 Δ</th>
+        <th>J12 Δ</th>
+        <th>Net Δ</th>
+        <th>Status</th>
+      </tr></thead><tbody id="reserveSensBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+const COURSES = [
+  { id:'ucai', name:'User-centric AI Product Design', fmt:'Intensive', altFmt:'Elective', prof:'Peter' },
+  { id:'pidt', name:'Product Inno through Design Thinking', fmt:'Intensive', altFmt:'Elective', prof:'Peter', elecCap:30 },
+  { id:'aifu', name:'AI Fundamentals', fmt:'Intensive' },
+  { id:'mair', name:'Managing AI Responsibly', fmt:'Intensive', altFmt:'Elective', prof:'Michael' },
+  { id:'tesp', name:'Tech Sprints', fmt:'Elective' },
+  { id:'dddm', name:'Data Driven Decision Making', fmt:'Elective', altFmt:'Intensive' },
+  { id:'aibdm', name:'AI for Business Decision Making', fmt:'Elective', altFmt:'Intensive', prof:'Zhuoran' },
+  { id:'sct',  name:'Supply Chain Transformation', fmt:'Intensive' },
+  { id:'gaim', name:'Generative AI for Management', fmt:'Intensive' },
+];
+const COHORTS = ['S26','J27_12','J27_16'];
+const CNAMES = { S26:'S26 16mo', J27_12:'J27 12mo', J27_16:'J27 16mo' };
+
+// Periods with type and default cohort availability
+const PERIODS = [
+  { id:'oct26', label:'Oct 26', type:'intensive', dates:'Oct 19-21, 26',
+    avail:{S26:0, J27_12:0, J27_16:0} },
+  { id:'dec26', label:'Dec 26', type:'intensive', dates:'Dec 14-18, 26',
+    avail:{S26:null, J27_12:0, J27_16:0} },
+  { id:'janmar27', label:'Jan-Mar 27', type:'elective', dates:'Jan 4-Mar 26, 27',
+    avail:{S26:null, J27_12:0, J27_16:0} },
+  { id:'feb27', label:'Feb 27', type:'intensive', dates:'Feb 15-17, 27',
+    avail:{S26:null, J27_12:0, J27_16:0} },
+  { id:'aprjun27', label:'Apr-Jun 27', type:'elective', dates:'Apr 5-Jun 25, 27',
+    avail:{S26:null, J27_12:0, J27_16:0} },
+  { id:'apr27', label:'Apr 27', type:'intensive', dates:'Apr 5-9, 27',
+    avail:{S26:null, J27_12:null, J27_16:null} },
+  { id:'oct27', label:'Oct 27', type:'intensive', dates:'Oct 19-21, 27',
+    avail:{S26:null, J27_12:null, J27_16:null} },
+  { id:'dec27', label:'Dec 27', type:'intensive', dates:'Dec 14-18, 27',
+    avail:{S26:null, J27_12:null, J27_16:null} },
+  { id:'janmar28', label:'Jan-Mar 28', type:'elective', dates:'Jan 4-Mar 26, 28',
+    avail:{S26:0, J27_12:0, J27_16:null} },
+  { id:'feb28', label:'Feb 28', type:'intensive', dates:'Feb 15-17, 28',
+    avail:{S26:0, J27_12:0, J27_16:null} },
+  { id:'apr28', label:'Apr 28', type:'intensive', dates:'Apr 5-9, 28',
+    avail:{S26:0, J27_12:0, J27_16:null} },
+  { id:'aprjun28', label:'Apr-Jun 28', type:'elective', dates:'Apr 5-Jun 25, 28',
+    avail:{S26:0, J27_12:0, J27_16:0} },
+];
+
+// Default caps per course
+const DEFAULT_CAPS = {
+  ucai: 50, pidt: 36, aifu: 50, mair: 50,
+  tesp: 50, dddm: 50, aibdm: 35, sct: 50, gaim: 40
+};
+
+// Default prev consumption (only for first-year offerings where previous cohort took seats)
+const DEFAULT_PREV = {
+  // Real carry-over from S25/J26 (per admin data, Apr 2026)
+  'ucai_oct26': 24, 'pidt_dec26': 30, 'aifu_dec26': 15,
+  'mair_janmar27': 38, 'tesp_janmar27': 15, 'dddm_janmar27': 35,
+  'mair_feb27': 12  // MAIR: 50 total last year, 12 intensive + 38 elective (assuming 12 reserved for S26)
+};
+
+// Default popularity per course (100% = all students want it)
+const DEFAULT_POP = {
+  ucai: 100, pidt: 100, aifu: 100, mair: 100,
+  tesp: 100, dddm: 100, aibdm: 100, sct: 100, gaim: 100
+};
+let coursePop = {...DEFAULT_POP};
+
+// Calendar state: which course is offered in which period
+// calendar[courseId][periodId] = true/false
+let calendar = {};
+
+// Override caps/prev per slot: overrides[courseId+'_'+periodId] = { cap, prev }
+let slotOverrides = {};
+
+// Per-slot quota overrides: quotaOverrides[courseId+'_'+periodId][cohort] = value or null
+let quotaOverrides = {};
+
+let slots = [];
+
+function canOfferIn(course, period) {
+  // Intensive courses can only go in intensive periods
+  // Elective courses can only go in elective periods
+  // Courses with altFmt can appear in either
+  const cf = course.fmt.toLowerCase();
+  const ca = (course.altFmt || '').toLowerCase();
+  const pt = period.type.toLowerCase();
+  if (cf === pt) return true;
+  if (ca === pt) return true;
+  return false;
+}
+
+function initCalendar() {
+  calendar = {};
+  slotOverrides = {};
+  quotaOverrides = {};
+  COURSES.forEach(c => {
+    calendar[c.id] = {};
+    PERIODS.forEach(p => { calendar[c.id][p.id] = false; });
+  });
+  // Set defaults matching current setup
+  calendar.ucai.oct26 = true;
+  calendar.pidt.dec26 = true;
+  calendar.aifu.dec26 = true;
+  calendar.mair.janmar27 = true;
+  calendar.mair.feb27 = true;
+  calendar.tesp.janmar27 = true;
+  calendar.dddm.janmar27 = true;
+  calendar.pidt.aprjun27 = true;
+  calendar.aibdm.aprjun27 = true;
+  calendar.gaim.apr27 = true;
+  calendar.gaim.apr28 = true;
+  calendar.ucai.oct27 = true;
+  calendar.pidt.dec27 = true;
+  calendar.aifu.dec27 = true;
+  calendar.mair.janmar28 = true;
+  calendar.tesp.janmar28 = true;
+  calendar.dddm.janmar28 = true;
+  calendar.mair.feb28 = true;
+  calendar.aibdm.aprjun28 = true;
+}
+
+function renderCalendar() {
+  const tbl = document.getElementById('calTable');
+  let html = '<thead><tr><th style="text-align:left;min-width:200px;">Course</th><th style="width:50px;">Format</th>';
+  PERIODS.forEach(p => {
+    const bg = p.type === 'intensive' ? '#fef3c7' : '#dbeafe';
+    html += `<th style="background:${bg};color:#333;font-size:10px;width:65px;padding:4px 2px;">${p.label}<br><span style="font-weight:400">${p.type === 'intensive' ? 'Int' : 'Elec'}</span></th>`;
+  });
+  html += '</tr></thead><tbody>';
+  COURSES.forEach(c => {
+    html += `<tr><td class="cal-course">${c.name}</td><td class="cal-fmt">${c.fmt}${c.altFmt ? '/'+c.altFmt : ''}</td>`;
+    PERIODS.forEach(p => {
+      const possible = canOfferIn(c, p);
+      const checked = calendar[c.id][p.id] ? 'checked' : '';
+      if (possible) {
+        html += `<td style="text-align:center"><input type="checkbox" class="period-check" ${checked} onchange="togglePeriod('${c.id}','${p.id}',this.checked)"></td>`;
+      } else {
+        html += `<td style="text-align:center;color:#ddd;">-</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function togglePeriod(courseId, periodId, checked) {
+  calendar[courseId][periodId] = checked;
+  rebuildSlots();
+  renderSlotTable();
+}
+
+function rebuildSlots() {
+  const oldSlots = {};
+  slots.forEach(s => {
+    const key = s.c + '_' + s.pid;
+    oldSlots[key] = { cap: s.cap, prev: s.prev, q: {...s.q} };
+  });
+
+  slots = [];
+  // Generate slots from calendar, ordered by period
+  PERIODS.forEach(p => {
+    COURSES.forEach(c => {
+      if (!calendar[c.id][p.id]) return;
+      const key = c.id + '_' + p.id;
+      const fmt = (p.type === 'intensive') ? 'Intensive' : 'Elective';
+      // Restore overrides if they exist
+      const prev = oldSlots[key] || slotOverrides[key];
+      const qo = quotaOverrides[key];
+      const baseCap = DEFAULT_CAPS[c.id] || 50;
+      const defaultCap = (fmt === 'Elective' && c.elecCap) ? c.elecCap : baseCap;
+      const defaultPrev = DEFAULT_PREV[key] || 0;
+      const avail = p.avail;
+      slots.push({
+        c: c.id,
+        pid: p.id,
+        p: p.dates,
+        fmt: fmt,
+        cap: prev ? prev.cap : defaultCap,
+        prev: prev ? prev.prev : defaultPrev,
+        q: qo ? {...qo} : (prev ? {...prev.q} : {S26: avail.S26, J27_12: avail.J27_12, J27_16: avail.J27_16})
+      });
+    });
+  });
+}
+
+function getDerived() {
+  return {
+    S26: +document.getElementById('n_S26').value || 0,
+    J27_12: +document.getElementById('n_J27_12').value || 0,
+    J27_16: +document.getElementById('n_J27_16').value || 0,
+  };
+}
+
+function getCohortAvgLoad(co) {
+  const n3 = +document.getElementById('load_'+co+'_3').value || 0;
+  const n4 = +document.getElementById('load_'+co+'_4').value || 0;
+  const n5 = +document.getElementById('load_'+co+'_5').value || 0;
+  const n6 = +document.getElementById('load_'+co+'_6').value || 0;
+  const total = n3 + n4 + n5 + n6;
+  if (total === 0) return 3;
+  return (3*n3 + 4*n4 + 5*n5 + 6*n6) / total;
+}
+
+function getAvgLoad() {
+  // Weighted average across all cohorts
+  let totalW = 0, totalN = 0;
+  COHORTS.forEach(co => {
+    const n = +document.getElementById('n_'+co).value || 0;
+    totalW += getCohortAvgLoad(co) * n;
+    totalN += n;
+  });
+  return totalN > 0 ? totalW / totalN : 3;
+}
+
+function updateDerived() {
+  COHORTS.forEach(co => {
+    const n3 = +document.getElementById('load_'+co+'_3').value || 0;
+    const n4 = +document.getElementById('load_'+co+'_4').value || 0;
+    const n5 = +document.getElementById('load_'+co+'_5').value || 0;
+    const n6 = +document.getElementById('load_'+co+'_6').value || 0;
+    const total = n3 + n4 + n5 + n6;
+    const avg = getCohortAvgLoad(co);
+    const el = document.getElementById('loadInfo_'+co);
+    if (el) el.textContent = `${total} students, avg ${avg.toFixed(2)} courses/student`;
+  });
+}
+
+function quotaChanged(slotIdx, cohort, val) {
+  const v = val.trim();
+  slots[slotIdx].q[cohort] = (v === '' || v === '-') ? null : Math.max(0, parseInt(v) || 0);
+  // Save override
+  const key = slots[slotIdx].c + '_' + slots[slotIdx].pid;
+  quotaOverrides[key] = {...slots[slotIdx].q};
+  renderSlotTable();
+}
+
+function capChanged(slotIdx, val) {
+  slots[slotIdx].cap = Math.max(0, +val || 0);
+  const key = slots[slotIdx].c + '_' + slots[slotIdx].pid;
+  if (!slotOverrides[key]) slotOverrides[key] = {};
+  slotOverrides[key].cap = slots[slotIdx].cap;
+  slotOverrides[key].prev = slots[slotIdx].prev;
+  renderSlotTable();
+}
+
+function prevChanged(slotIdx, val) {
+  slots[slotIdx].prev = Math.max(0, +val || 0);
+  const key = slots[slotIdx].c + '_' + slots[slotIdx].pid;
+  if (!slotOverrides[key]) slotOverrides[key] = {};
+  slotOverrides[key].cap = slots[slotIdx].cap;
+  slotOverrides[key].prev = slots[slotIdx].prev;
+  renderSlotTable();
+}
+
+function popChanged(courseId, val) {
+  coursePop[courseId] = Math.max(0, Math.min(100, +val || 100));
+  renderSlotTable();
+}
+
+function effCap(s) { return Math.max(0, s.cap - s.prev); }
+function effCapPref(s) { return Math.floor(effCap(s) * (coursePop[s.c] || 100) / 100); }
+function getQuota(slotIdx, cohort) {
+  const q = slots[slotIdx].q[cohort];
+  return q === null ? effCap(slots[slotIdx]) : Math.min(q, effCap(slots[slotIdx]));
+}
+
+function renderSlotTable() {
+  const tb = document.getElementById('slotBody');
+  tb.innerHTML = '';
+  slots.forEach((s, i) => {
+    const cn = COURSES.find(x => x.id === s.c).name;
+    const ec = effCap(s);
+    const tr = document.createElement('tr');
+    const pop = coursePop[s.c] || 100;
+    const ecp = effCapPref(s);
+    tr.innerHTML = `<td>${i+1}</td><td>${cn}</td><td style="font-size:11px">${s.p}</td><td style="font-size:11px">${s.fmt}</td>` +
+      `<td><input class="cap-input" type="number" value="${s.cap}" min="0" onchange="capChanged(${i},this.value)"></td>` +
+      `<td><input class="prev-input" type="number" value="${s.prev}" min="0" onchange="prevChanged(${i},this.value)"></td>` +
+      `<td><input class="cap-input" type="number" value="${pop}" min="0" max="100" onchange="popChanged('${s.c}',this.value)"></td>` +
+      `<td class="eff-cap ${ecp<15?'tight':'ok'}">${ecp}</td>` +
+      COHORTS.map(co => {
+        const q = s.q[co];
+        const cls = q === null ? 'quota-input' : q === 0 ? 'quota-input zero' : 'quota-input has-val';
+        const val = q === null ? '' : q;
+        return `<td><input class="${cls}" type="number" value="${val}" placeholder="\u2014" min="0" onchange="quotaChanged(${i},'${co}',this.value)" onfocus="if(this.value==='0')this.select()"></td>`;
+      }).join('');
+    tb.appendChild(tr);
+  });
+}
+
+function getAccessibleCourses(co) {
+  const acc = new Set();
+  slots.forEach((s, i) => { if (getQuota(i, co) > 0) acc.add(s.c); });
+  return acc;
+}
+
+function setCohortInputs(totS26, nS26, totJ12, nJ12, totJ16, nJ16) {
+  document.getElementById('tot_S26').value = totS26;
+  document.getElementById('n_S26').value = nS26;
+  document.getElementById('tot_J27_12').value = totJ12;
+  document.getElementById('n_J27_12').value = nJ12;
+  document.getElementById('tot_J27_16').value = totJ16;
+  document.getElementById('n_J27_16').value = nJ16;
+}
+
+function setLoadInputs(co, n3, n4, n5, n6) {
+  document.getElementById('load_'+co+'_3').value = n3;
+  document.getElementById('load_'+co+'_4').value = n4;
+  document.getElementById('load_'+co+'_5').value = n5;
+  document.getElementById('load_'+co+'_6').value = n6;
+}
+
+// ===== COMPOSABLE SCENARIO STATE =====
+let activeStress = { j26_flood: false, j12_all: false, high_uptake: false, all_in: false };
+let activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
+let activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
+
+function toggleStress(btn) {
+  const stress = btn.dataset.stress;
+  activeStress[stress] = !activeStress[stress];
+  btn.classList.toggle('toggle-on', activeStress[stress]);
+  // "Everyone joins" supersedes "All J12 join" and "High uptake"
+  if (stress === 'all_in' && activeStress.all_in) {
+    ['j12_all', 'high_uptake'].forEach(k => {
+      activeStress[k] = false;
+      document.querySelector(`[data-stress="${k}"]`).classList.remove('toggle-on');
+    });
+  }
+  if ((stress === 'j12_all' || stress === 'high_uptake') && activeStress[stress] && activeStress.all_in) {
+    activeStress.all_in = false;
+    document.querySelector('[data-stress="all_in"]').classList.remove('toggle-on');
+  }
+  applyCombo();
+}
+
+function toggleFix(btn) {
+  const fix = btn.dataset.fix;
+  activeFixes[fix] = !activeFixes[fix];
+  btn.classList.toggle('toggle-on', activeFixes[fix]);
+  applyCombo();
+}
+
+function toggleGov(btn) {
+  const gov = btn.dataset.gov;
+  activeGov[gov] = !activeGov[gov];
+  btn.classList.toggle('toggle-on', activeGov[gov]);
+  if (gov === 'reserve') {
+    document.getElementById('reservePanel').style.display = activeGov.reserve ? 'block' : 'none';
+  }
+  if (gov === 'quotas') {
+    document.getElementById('quotaPanel').style.display = activeGov.quotas ? 'block' : 'none';
+  }
+  applyCombo();
+}
+
+function applyCombo() {
+  initCalendar();
+
+  // Reset governance
+
+  reserveJ12 = 0;
+  intensive2Mode = false;
+
+  // Reset per-course popularity
+  COURSES.forEach(c => { coursePop[c.id] = DEFAULT_POP[c.id] || 100; });
+
+  // Default cohort sizes
+  let totS26=150, nS26=70, totJ12=29, nJ12=12, totJ16=54, nJ16=22;
+  let loadS26=[40,20,7,3], loadJ12=[6,4,2,0], loadJ16=[12,6,3,1];
+
+  // Stack stress factors — take the more stressful value for overlapping params
+  if (activeStress.high_uptake) {
+    nS26 = Math.max(nS26, 110);
+    nJ12 = Math.max(nJ12, 25);
+    nJ16 = Math.max(nJ16, 45);
+    loadS26 = [60,33,12,5];
+    loadJ12 = [14,7,3,1];
+    loadJ16 = [24,13,5,3];
+  }
+  if (activeStress.j12_all) {
+    nJ12 = 29; // all 29 join — always overrides to max
+    loadJ12 = [16,8,3,2];
+  }
+  if (activeStress.all_in) {
+    nS26 = totS26;  // 150
+    nJ12 = totJ12;  // 29
+    nJ16 = totJ16;  // 54
+    loadS26 = [85,43,15,7];
+    loadJ12 = [16,8,3,2];
+    loadJ16 = [29,15,7,3];
+  }
+
+  setCohortInputs(totS26, nS26, totJ12, nJ12, totJ16, nJ16);
+  setLoadInputs('S26', ...loadS26);
+  setLoadInputs('J27_12', ...loadJ12);
+  setLoadInputs('J27_16', ...loadJ16);
+  // Apply schedule fixes (both years)
+  if (activeFixes.mair) {
+    calendar.mair.janmar27 = false; calendar.mair.oct26 = true;
+    calendar.mair.janmar28 = false; calendar.mair.oct27 = true;
+  }
+  if (activeFixes.aibdm) {
+    calendar.aibdm.aprjun27 = false; calendar.aibdm.oct26 = true;
+    calendar.aibdm.aprjun28 = false; calendar.aibdm.oct27 = true;
+  }
+  if (activeFixes.ucai) {
+    calendar.ucai.oct26 = false; calendar.ucai.janmar27 = true;
+    calendar.ucai.oct27 = false; calendar.ucai.janmar28 = true;
+  }
+
+  if (activeFixes.sct) {
+    calendar.sct.apr27 = true;
+    calendar.sct.apr28 = true;
+  }
+
+  // Apply governance
+
+  if (activeGov.reserve) reserveJ12 = +document.getElementById('reserveSeats').value || 12;
+  if (activeGov.intensive2) intensive2Mode = true;
+  if (activeGov.caps) {
+    // Cap concentration count: S26 ≤ 90, J27 12mo ≤ 25, J27 16mo uncapped
+    const COHORT_CAPS = { S26: 90, J27_12: 25 };
+    const nS26 = parseInt(document.getElementById('n_S26').value);
+    const nJ12 = parseInt(document.getElementById('n_J27_12').value);
+    if (nS26 > COHORT_CAPS.S26) document.getElementById('n_S26').value = COHORT_CAPS.S26;
+    if (nJ12 > COHORT_CAPS.J27_12) document.getElementById('n_J27_12').value = COHORT_CAPS.J27_12;
+  }
+
+  slots = []; // Clear stale slot data so rebuildSlots uses defaults
+  rebuildSlots();
+
+  // Apply prev consumption based on stress factors
+  if (activeStress.high_uptake) {
+    slots.forEach(s => {
+      if (s.pid === 'janmar27') s.prev = Math.max(s.prev, 25);
+      if (s.pid === 'feb27') s.prev = Math.max(s.prev, 20);
+    });
+  }
+  if (activeStress.j26_flood) {
+    slots.forEach(s => {
+      if (s.pid === 'dec26' && s.c === 'pidt') s.prev = Math.max(s.prev, 34);
+      if (s.pid === 'dec26' && s.c === 'aifu') s.prev = Math.max(s.prev, 45);
+      if (s.pid === 'janmar27') s.prev = Math.max(s.prev, 40);
+      if (s.pid === 'feb27') s.prev = Math.max(s.prev, 40);
+      if (s.pid === 'aprjun27') s.prev = Math.max(s.prev, 25);
+    });
+  }
+
+  // Apply cohort quotas: set per-slot quota as % of effective capacity
+  if (activeGov.quotas) {
+    const pctS26 = (+document.getElementById('quotaPct_S26').value || 0) / 100;
+    const pctJ16 = (+document.getElementById('quotaPct_J27_16').value || 0) / 100;
+    const pctJ12 = (+document.getElementById('quotaPct_J27_12').value || 0) / 100;
+    const totalPct = Math.round((pctS26 + pctJ16 + pctJ12) * 100);
+    document.getElementById('quotaPctTotal').textContent = `Total: ${totalPct}%` + (totalPct !== 100 ? ' ⚠️' : ' ✓');
+    document.getElementById('quotaPctTotal').style.color = totalPct === 100 ? '#16a34a' : '#dc2626';
+    slots.forEach(s => {
+      const ec = effCap(s);
+      const pcts = { S26: pctS26, J27_12: pctJ12, J27_16: pctJ16 };
+      const openCohorts = COHORTS.filter(co => s.q[co] !== 0);
+      if (openCohorts.length >= 2) {
+        // Normalize percentages among open cohorts so blocked cohort's share redistributes
+        const totalOpen = openCohorts.reduce((sum, co) => sum + pcts[co], 0);
+        openCohorts.forEach(co => {
+          s.q[co] = Math.floor(ec * pcts[co] / totalOpen);
+        });
+      }
+    });
+  }
+
+  // Update combo label
+  const parts = [];
+  const stressLabels = { j26_flood:'J26 Flood', j12_all:'All J12 join', high_uptake:'High uptake', all_in:'Everyone joins' };
+  const anyStress = Object.values(activeStress).some(v => v);
+  if (!anyStress) parts.push('Current Setup');
+  Object.keys(activeStress).forEach(k => { if (activeStress[k]) parts.push(stressLabels[k]); });
+  const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', sct:'+SCT Apr' };
+  Object.keys(activeFixes).forEach(k => { if (activeFixes[k]) parts.push(fixLabels[k]); });
+
+  if (activeGov.reserve) parts.push(`Reserve ${reserveJ12} seats`);
+  if (activeGov.quotas) {
+    const pS = document.getElementById('quotaPct_S26').value;
+    const p16 = document.getElementById('quotaPct_J27_16').value;
+    const p12 = document.getElementById('quotaPct_J27_12').value;
+    parts.push(`Quotas (S26:${pS}%, J16:${p16}%, J12:${p12}%)`);
+  }
+  if (activeGov.caps) parts.push('Caps (S26:90, J12:25)');
+  if (activeGov.intensive2) parts.push('2 Courses');
+  document.getElementById('comboLabel').textContent = parts.length > 1 ? 'Active: ' + parts.join(' + ') : '';
+
+  renderCalendar();
+  renderSlotTable();
+  updateDerived();
+  document.getElementById('resultsPanel').style.display = 'none';
+  document.getElementById('sensPanel').style.display = 'none';
+  document.getElementById('reserveSensPanel').style.display = 'none';
+}
+
+function resetScenario() {
+  // Reset all toggles
+  activeStress = { j26_flood: false, j12_all: false, high_uptake: false, all_in: false };
+  activeFixes = { mair: false, aibdm: false, ucai: false, sct: false };
+  activeGov = { reserve: false, quotas: false, caps: false, intensive2: false };
+  document.getElementById('reservePanel').style.display = 'none';
+  document.getElementById('quotaPanel').style.display = 'none';
+  document.querySelectorAll('#stressBar .scenario-btn, #fixBar .scenario-btn, #govBar .scenario-btn').forEach(b => b.classList.remove('toggle-on'));
+  applyCombo();
+}
+
+// ========== ENROLLMENT ORDER ==========
+// S26 enrolls first, then J27_16 and J27_12 simultaneously
+// Solver tries both J16→J12 and J12→J16 orderings, keeps the higher total
+const PHASE1 = ['S26'];
+const PHASE2_OPTIONS = [['J27_16', 'J27_12'], ['J27_12', 'J27_16']];
+const ENROLL_ORDER = ['S26', 'J27_16', 'J27_12']; // kept for overflow pass
+
+// ========== SOLVER ==========
+
+// Helper: solve a single cohort greedily given current remaining capacity
+function solveCohortGreedy(co, n, avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc) {
+  let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+  if (intensive2Mode) avgLoad = 2;
+  const courses = cohortCourses[co];
+  const courseIds = Object.keys(courses);
+  const minCourses = intensive2Mode ? 2 : 3;
+
+  if (courseIds.length < minCourses || n === 0) {
+    result[co] = 0;
+    cohortAlloc[co] = {};
+    return;
+  }
+
+  const courseCaps = {};
+  courseIds.forEach(cid => {
+    courseCaps[cid] = courses[cid].reduce((sum, s) => {
+      const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
+      return sum + Math.max(0, cap - reserve);
+    }, 0);
+  });
+
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+    else hi = mid - 1;
+  }
+  result[co] = lo;
+
+  // Water-fill allocation
+  const courseAllocation = waterFill(courseIds, courseCaps, lo, avgLoad);
+  cohortAlloc[co] = courseAllocation;
+
+  courseIds.forEach(cid => {
+    let toAlloc = courseAllocation[cid] || 0;
+    const sortedSlots = [...courses[cid]].sort((a, b) => {
+      const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+      const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
+      const resA = (co !== 'J27_12') ? reservedCap[a.slotIdx] : 0;
+      const resB = (co !== 'J27_12') ? reservedCap[b.slotIdx] : 0;
+      return (rawB - resB) - (rawA - resA);
+    });
+    sortedSlots.forEach(si => {
+      const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
+      const avail = Math.max(0, raw - reserve);
+      const give = Math.min(toAlloc, avail);
+      alloc[si.slotIdx][co] += give;
+      remCap[si.slotIdx] -= give;
+      remQuota[si.slotIdx][co] -= give;
+      toAlloc -= give;
+    });
+  });
+}
+
+// Water-fill: distribute target seat-enrollments across courses as evenly as possible
+function waterFill(courseIds, courseCaps, served, avgLoad) {
+  const courseAllocation = {};
+  const maxPerCourse = {};
+  let totalAvail = 0;
+  courseIds.forEach(cid => {
+    maxPerCourse[cid] = Math.min(courseCaps[cid], served);
+    totalAvail += maxPerCourse[cid];
+  });
+  const target = Math.ceil(avgLoad * served);
+  if (totalAvail <= target) {
+    courseIds.forEach(cid => { courseAllocation[cid] = maxPerCourse[cid]; });
+  } else {
+    courseIds.forEach(cid => { courseAllocation[cid] = 0; });
+    let remaining = target;
+    while (remaining > 0) {
+      let bestCid = null, bestVal = Infinity;
+      courseIds.forEach(cid => {
+        if (courseAllocation[cid] < maxPerCourse[cid] && courseAllocation[cid] < bestVal) {
+          bestVal = courseAllocation[cid]; bestCid = cid;
+        }
+      });
+      if (bestCid === null) break;
+      const level = courseAllocation[bestCid];
+      const atLevel = courseIds.filter(cid => courseAllocation[cid] === level && courseAllocation[cid] < maxPerCourse[cid]);
+      atLevel.forEach(cid => { if (remaining > 0) { courseAllocation[cid]++; remaining--; } });
+    }
+  }
+  return courseAllocation;
+}
+
+// Deep-clone solver state arrays
+function cloneState(remCap, remQuota, alloc) {
+  return {
+    remCap: [...remCap],
+    remQuota: remQuota.map(o => Object.assign({}, o)),
+    alloc: alloc.map(o => Object.assign({}, o))
+  };
+}
+
+// Restore solver state from snapshot
+function restoreState(remCap, remQuota, alloc, snap) {
+  snap.remCap.forEach((v, i) => remCap[i] = v);
+  snap.remQuota.forEach((o, i) => Object.assign(remQuota[i], o));
+  snap.alloc.forEach((o, i) => Object.assign(alloc[i], o));
+}
+
+function solveWith(ns, avgLoadOverrides) {
+  const cohortCourses = {};
+  COHORTS.forEach(co => {
+    const courses = {};
+    slots.forEach((s, i) => {
+      const q = getQuota(i, co);
+      if (q > 0) {
+        if (!courses[s.c]) courses[s.c] = [];
+        courses[s.c].push({ slotIdx: i, quota: q });
+      }
+    });
+    cohortCourses[co] = courses;
+  });
+
+  const remCap = slots.map(s => effCapPref(s));
+  const remQuota = slots.map((s, i) => {
+    const o = {};
+    COHORTS.forEach(co => o[co] = getQuota(i, co));
+    return o;
+  });
+
+  // Seat reservation: compute reserved seats in J12-accessible slots
+  const reservedCap = slots.map(() => 0);
+  if (reserveJ12 > 0) {
+    const j12C = cohortCourses['J27_12'] || {};
+    Object.keys(j12C).forEach(cid => {
+      let toReserve = reserveJ12;
+      j12C[cid].forEach(si => {
+        const avail = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx]['J27_12']);
+        const res = Math.min(toReserve, avail);
+        reservedCap[si.slotIdx] = res;
+        toReserve -= res;
+      });
+    });
+  }
+
+  const alloc = slots.map(() => { const o = {}; COHORTS.forEach(co => o[co] = 0); return o; });
+  const result = {};
+  const cohortAlloc = {};
+
+  // Phase 1: S26 enrolls first
+  PHASE1.forEach(co => {
+    solveCohortGreedy(co, ns[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc);
+  });
+
+  // Phase 2: J16 and J12 enroll simultaneously — try both orderings, keep better total
+  const snap = cloneState(remCap, remQuota, alloc);
+  let bestTotal = -1;
+  let bestResult = null, bestAlloc = null, bestCohortAlloc = null;
+
+  PHASE2_OPTIONS.forEach(order => {
+    restoreState(remCap, remQuota, alloc, snap);
+    const tryResult = Object.assign({}, result);
+    const tryCohortAlloc = Object.assign({}, cohortAlloc);
+    order.forEach(co => {
+      solveCohortGreedy(co, ns[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, tryResult, tryCohortAlloc);
+    });
+    const total = (tryResult['J27_16'] || 0) + (tryResult['J27_12'] || 0);
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestResult = Object.assign({}, tryResult);
+      bestCohortAlloc = Object.assign({}, tryCohortAlloc);
+      bestAlloc = cloneState(remCap, remQuota, alloc);
+    }
+  });
+
+  // Apply best result
+  Object.assign(result, bestResult);
+  Object.assign(cohortAlloc, bestCohortAlloc);
+  restoreState(remCap, remQuota, alloc, bestAlloc);
+
+  // === OVERFLOW PASS: unserved cohorts grab leftover capacity (quotas lifted) ===
+  ENROLL_ORDER.forEach(co => {
+    if (result[co] >= ns[co]) return;
+    const remaining = ns[co] - result[co];
+    let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+    if (intensive2Mode) avgLoad = 2;
+
+    const courses = cohortCourses[co];
+    const courseIds = Object.keys(courses);
+    if (courseIds.length < (intensive2Mode ? 2 : 3)) return;
+
+    // Rebuild course caps from remaining capacity — NO quota restriction
+    const courseCaps = {};
+    courseIds.forEach(cid => {
+      courseCaps[cid] = courses[cid].reduce((sum, s) => sum + remCap[s.slotIdx], 0);
+    });
+
+    let lo = 0, hi = remaining;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+      else hi = mid - 1;
+    }
+    if (lo === 0) return;
+    result[co] += lo;
+
+    // Water-fill for extra students
+    const courseAllocation = waterFill(courseIds, courseCaps, lo, avgLoad);
+
+    // Merge into cohortAlloc
+    courseIds.forEach(cid => {
+      cohortAlloc[co][cid] = (cohortAlloc[co][cid] || 0) + (courseAllocation[cid] || 0);
+    });
+
+    // Consume remaining capacity
+    courseIds.forEach(cid => {
+      let toAlloc = courseAllocation[cid] || 0;
+      const sortedSlots = [...courses[cid]].sort((a, b) => remCap[b.slotIdx] - remCap[a.slotIdx]);
+      sortedSlots.forEach(si => {
+        const avail = remCap[si.slotIdx];
+        const give = Math.min(toAlloc, avail);
+        alloc[si.slotIdx][co] += give;
+        remCap[si.slotIdx] -= give;
+        toAlloc -= give;
+      });
+    });
+  });
+
+  return { ns, result, alloc, cohortAlloc };
+}
+
+function canServeLoad(n, courseIds, courseCaps, avgLoad) {
+  let totalCap = 0;
+  courseIds.forEach(cid => { totalCap += Math.min(courseCaps[cid], n); });
+  return totalCap >= Math.ceil(avgLoad * n);
+}
+
+let reserveJ12 = 0;
+let intensive2Mode = false; // qualify via 2 courses only
+
+function getMandatoryOverrides() {
+  return null;
+}
+
+function solve(mode) {
+  const d = getDerived();
+  const ns = { S26: d.S26, J27_12: d.J27_12, J27_16: d.J27_16 };
+  const loadOvr = getMandatoryOverrides();
+
+  if (mode === 'fair') {
+    let bestRate = 0;
+    for (let pct = 100; pct >= 0; pct--) {
+      const caps = { S26: Math.round(ns.S26 * pct / 100), J27_12: Math.round(ns.J27_12 * pct / 100), J27_16: Math.round(ns.J27_16 * pct / 100) };
+      const res = solveWithFloor(ns, caps, loadOvr);
+      if (res) { bestRate = pct; break; }
+    }
+    const floor = { S26: Math.round(ns.S26 * bestRate / 100), J27_12: Math.round(ns.J27_12 * bestRate / 100), J27_16: Math.round(ns.J27_16 * bestRate / 100) };
+    const res = solveWithFloor(ns, floor, loadOvr);
+    res.mode = 'fair';
+    res.fairRate = bestRate;
+    res.mandatory = false;
+    res.intensive2 = intensive2Mode;
+    displayResults(res);
+  } else {
+    const res = solveWith(ns, loadOvr);
+    res.mode = 'max';
+    res.mandatory = false;
+    res.intensive2 = intensive2Mode;
+    displayResults(res);
+  }
+  document.getElementById('sensPanel').style.display = 'none';
+  document.getElementById('reserveSensPanel').style.display = 'none';
+}
+
+// Helper: solve a single cohort with floor constraint (for fairness mode)
+function solveCohortFloor(co, n, floor, avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCap, alloc, result, cohortAlloc) {
+  let avgLoad = avgLoadOverrides ? (avgLoadOverrides[co] || getCohortAvgLoad(co)) : getCohortAvgLoad(co);
+  if (intensive2Mode) avgLoad = 2;
+  const courses = cohortCourses[co];
+  const courseIds = Object.keys(courses);
+  const minCourses = intensive2Mode ? 2 : 3;
+
+  if (courseIds.length < minCourses || n === 0) {
+    result[co] = 0;
+    cohortAlloc[co] = {};
+    return floor > 0 ? false : true; // infeasible if floor > 0
+  }
+
+  const courseCaps = {};
+  courseIds.forEach(cid => {
+    courseCaps[cid] = courses[cid].reduce((sum, s) => {
+      const cap = Math.min(remCap[s.slotIdx], remQuota[s.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[s.slotIdx] : 0;
+      return sum + Math.max(0, cap - reserve);
+    }, 0);
+  });
+
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (canServeLoad(mid, courseIds, courseCaps, avgLoad)) lo = mid;
+    else hi = mid - 1;
+  }
+  const maxN = lo;
+
+  if (maxN < floor) return false; // infeasible
+  const served = floor; // Cap at fair share
+  result[co] = served;
+
+  const courseAllocation = waterFill(courseIds, courseCaps, served, avgLoad);
+  cohortAlloc[co] = courseAllocation;
+
+  courseIds.forEach(cid => {
+    let toAlloc = courseAllocation[cid] || 0;
+    const sortedSlots = [...courses[cid]].sort((a, b) => {
+      const rawA = Math.min(remCap[a.slotIdx], remQuota[a.slotIdx][co]);
+      const rawB = Math.min(remCap[b.slotIdx], remQuota[b.slotIdx][co]);
+      const resA = (co !== 'J27_12') ? reservedCap[a.slotIdx] : 0;
+      const resB = (co !== 'J27_12') ? reservedCap[b.slotIdx] : 0;
+      return (rawB - resB) - (rawA - resA);
+    });
+    sortedSlots.forEach(si => {
+      const raw = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx][co]);
+      const reserve = (co !== 'J27_12') ? reservedCap[si.slotIdx] : 0;
+      const avail = Math.max(0, raw - reserve);
+      const give = Math.min(toAlloc, avail);
+      alloc[si.slotIdx][co] += give;
+      remCap[si.slotIdx] -= give;
+      remQuota[si.slotIdx][co] -= give;
+      toAlloc -= give;
+    });
+  });
+  return true; // feasible
+}
+
+function solveWithFloor(ns, floors, avgLoadOverrides) {
+  const cohortCourses = {};
+  COHORTS.forEach(co => {
+    const courses = {};
+    slots.forEach((s, i) => {
+      const q = getQuota(i, co);
+      if (q > 0) {
+        if (!courses[s.c]) courses[s.c] = [];
+        courses[s.c].push({ slotIdx: i, quota: q });
+      }
+    });
+    cohortCourses[co] = courses;
+  });
+
+  const remCap = slots.map(s => effCapPref(s));
+  const remQuota = slots.map((s, i) => {
+    const o = {};
+    COHORTS.forEach(co => o[co] = getQuota(i, co));
+    return o;
+  });
+
+  // Seat reservation for fairness solver
+  const reservedCapF = slots.map(() => 0);
+  if (reserveJ12 > 0) {
+    const j12C = cohortCourses['J27_12'] || {};
+    Object.keys(j12C).forEach(cid => {
+      let toRes = reserveJ12;
+      j12C[cid].forEach(si => {
+        const av = Math.min(remCap[si.slotIdx], remQuota[si.slotIdx]['J27_12']);
+        const r = Math.min(toRes, av);
+        reservedCapF[si.slotIdx] = r;
+        toRes -= r;
+      });
+    });
+  }
+
+  const alloc = slots.map(() => { const o = {}; COHORTS.forEach(co => o[co] = 0); return o; });
+  const result = {};
+  const cohortAlloc = {};
+
+  // Phase 1: S26
+  let feasible = true;
+  PHASE1.forEach(co => {
+    if (!feasible) return;
+    feasible = solveCohortFloor(co, ns[co], floors[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCapF, alloc, result, cohortAlloc);
+  });
+  if (!feasible) return null;
+
+  // Phase 2: J16 and J12 simultaneously — try both orderings, keep first feasible with better total
+  const snap = cloneState(remCap, remQuota, alloc);
+  let bestTotal = -1;
+  let bestResult = null, bestAlloc = null, bestCohortAlloc = null;
+  let anyFeasible = false;
+
+  PHASE2_OPTIONS.forEach(order => {
+    restoreState(remCap, remQuota, alloc, snap);
+    const tryResult = Object.assign({}, result);
+    const tryCohortAlloc = Object.assign({}, cohortAlloc);
+    let ok = true;
+    order.forEach(co => {
+      if (!ok) return;
+      ok = solveCohortFloor(co, ns[co], floors[co], avgLoadOverrides, cohortCourses, remCap, remQuota, reservedCapF, alloc, tryResult, tryCohortAlloc);
+    });
+    if (!ok) return;
+    anyFeasible = true;
+    const total = (tryResult['J27_16'] || 0) + (tryResult['J27_12'] || 0);
+    if (total > bestTotal) {
+      bestTotal = total;
+      bestResult = Object.assign({}, tryResult);
+      bestCohortAlloc = Object.assign({}, tryCohortAlloc);
+      bestAlloc = cloneState(remCap, remQuota, alloc);
+    }
+  });
+
+  if (!anyFeasible) return null;
+  Object.assign(result, bestResult);
+  Object.assign(cohortAlloc, bestCohortAlloc);
+  restoreState(remCap, remQuota, alloc, bestAlloc);
+
+  return { ns, result, alloc, cohortAlloc };
+}
+
+function runSensitivity() {
+  const d = getDerived();
+  const cur12 = d.J27_12;
+  const cur16 = d.J27_16;
+  const curTotal = cur12 + cur16;
+  const ratio12 = curTotal > 0 ? cur12 / curTotal : 0.35;
+
+  const sensBody = document.getElementById('sensBody');
+  sensBody.innerHTML = '';
+  let threshold = null;
+
+  for (let tot = 5; tot <= 80; tot += 5) {
+    const n12 = Math.round(tot * ratio12);
+    const n16 = tot - n12;
+    const res = solveWith({ S26: d.S26, J27_12: n12, J27_16: n16 });
+    const totalServed = COHORTS.reduce((s, co) => s + res.result[co], 0);
+    const totalNeeded = d.S26 + n12 + n16;
+    const allGood = totalServed >= totalNeeded;
+    const isCurrent = (tot === curTotal || (tot >= curTotal - 2 && tot <= curTotal + 2));
+
+    if (!allGood && threshold === null) threshold = tot;
+
+    const s26pct = d.S26 > 0 ? Math.round(res.result.S26 / d.S26 * 100) : 100;
+    const j12pct = n12 > 0 ? Math.round(res.result.J27_12 / n12 * 100) : 100;
+    const j16pct = n16 > 0 ? Math.round(res.result.J27_16 / n16 * 100) : 100;
+
+    const statusCls = allGood ? 'sens-safe' : (totalServed / totalNeeded >= 0.8 ? 'sens-warning' : 'sens-danger');
+    const statusText = allGood ? '\u2713 All served' : `${totalNeeded - totalServed} unserved`;
+
+    sensBody.innerHTML += `<tr class="${isCurrent ? 'current' : ''}">
+      <td>${tot} ${isCurrent ? '(current)' : ''}</td>
+      <td>${n12}</td><td>${n16}</td>
+      <td>${res.result.S26}/${d.S26} (${s26pct}%)</td>
+      <td class="${j12pct < 100 ? 'sens-danger' : ''}">${res.result.J27_12}/${n12} (${j12pct}%)</td>
+      <td class="${j16pct < 100 ? 'sens-danger' : ''}">${res.result.J27_16}/${n16} (${j16pct}%)</td>
+      <td>${totalServed}</td><td>${totalNeeded}</td>
+      <td class="${statusCls}">${statusText}</td>
+    </tr>`;
+  }
+
+  const thresholdBox = document.getElementById('thresholdBox');
+  if (threshold !== null) {
+    thresholdBox.innerHTML = `<div class="threshold-box">
+      <div class="threshold-label">System breaks at J27 concentration cohort of</div>
+      <div class="threshold-num">${threshold} students</div>
+      <div class="threshold-label">With current caps, quotas, and ${Math.round(ratio12*100)}/${Math.round((1-ratio12)*100)} 12mo/16mo split</div>
+    </div>`;
+  } else {
+    thresholdBox.innerHTML = `<div style="background:#dcfce7;border:2px solid #16a34a;border-radius:10px;padding:16px;text-align:center;margin-top:12px;">
+      <div style="font-size:16px;font-weight:700;color:#16a34a;">All scenarios up to 80 students are served \u2713</div>
+    </div>`;
+  }
+
+  document.getElementById('sensPanel').style.display = 'block';
+  document.getElementById('sensPanel').scrollIntoView({ behavior: 'smooth' });
+
+  // Also run reserve sensitivity if reserve is active
+  if (activeGov.reserve) runReserveSensitivity();
+}
+
+function runReserveSensitivity() {
+  const d = getDerived();
+  const ns = { S26: d.S26, J27_12: d.J27_12, J27_16: d.J27_16 };
+  const totalNeeded = d.S26 + d.J27_12 + d.J27_16;
+  const loadOvr = getMandatoryOverrides();
+
+  // Baseline: R=0
+  const savedReserve = reserveJ12;
+  reserveJ12 = 0;
+  rebuildSlots();
+  const baseline = solveWith(ns, loadOvr);
+  const baseS26 = baseline.result.S26;
+  const baseJ12 = baseline.result.J27_12;
+  const baseTotal = COHORTS.reduce((s, co) => s + baseline.result[co], 0);
+
+  const sensBody = document.getElementById('reserveSensBody');
+  sensBody.innerHTML = '';
+  const curR = savedReserve;
+  let bestTotal = 0, bestR = 0;
+
+  for (let r = 0; r <= 25; r++) {
+    reserveJ12 = r;
+    rebuildSlots();
+    const res = solveWith(ns, loadOvr);
+    const s26 = res.result.S26;
+    const j12 = res.result.J27_12;
+    const j16 = res.result.J27_16;
+    const totalServed = s26 + j12 + j16;
+    const allGood = totalServed >= totalNeeded;
+
+    if (totalServed > bestTotal) { bestTotal = totalServed; bestR = r; }
+
+    const s26delta = s26 - baseS26;
+    const j12delta = j12 - baseJ12;
+    const netDelta = totalServed - baseTotal;
+    const isCurrent = (r === curR);
+
+    const s26pct = d.S26 > 0 ? Math.round(s26 / d.S26 * 100) : 100;
+    const j12pct = d.J27_12 > 0 ? Math.round(j12 / d.J27_12 * 100) : 100;
+    const j16pct = d.J27_16 > 0 ? Math.round(j16 / d.J27_16 * 100) : 100;
+
+    const statusCls = allGood ? 'sens-safe' : (totalServed / totalNeeded >= 0.8 ? 'sens-warning' : 'sens-danger');
+    const statusText = allGood ? '✓ All served' : `${totalNeeded - totalServed} unserved`;
+
+    const fmtDelta = v => v > 0 ? `<span style="color:#16a34a">+${v}</span>` : v < 0 ? `<span style="color:#dc2626">${v}</span>` : '—';
+
+    sensBody.innerHTML += `<tr class="${isCurrent ? 'current' : ''}" style="${r === bestR ? 'font-weight:600' : ''}">
+      <td>${r} ${isCurrent ? '◀ current' : ''}</td>
+      <td class="${s26pct < 100 ? 'sens-danger' : ''}">${s26}/${d.S26} (${s26pct}%)</td>
+      <td class="${j12pct < 100 ? 'sens-danger' : ''}">${j12}/${d.J27_12} (${j12pct}%)</td>
+      <td class="${j16pct < 100 ? 'sens-danger' : ''}">${j16}/${d.J27_16} (${j16pct}%)</td>
+      <td>${totalServed}</td><td>${totalNeeded}</td>
+      <td>${fmtDelta(s26delta)}</td>
+      <td>${fmtDelta(j12delta)}</td>
+      <td>${fmtDelta(netDelta)}</td>
+      <td class="${statusCls}">${statusText}</td>
+    </tr>`;
+  }
+
+  const thresholdBox = document.getElementById('reserveThresholdBox');
+  thresholdBox.innerHTML = `<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:10px;padding:16px;text-align:center;margin-top:12px;">
+    <div style="font-size:14px;font-weight:700;color:#1d4ed8;">Optimal reserve: ${bestR} seats → ${bestTotal} served</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:4px;">Δ columns show change vs R=0 (no reservation)</div>
+  </div>`;
+
+  // Restore
+  reserveJ12 = savedReserve;
+  rebuildSlots();
+
+  document.getElementById('reserveSensPanel').style.display = 'block';
+  document.getElementById('reserveSensPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayResults(res) {
+  const { ns, result, alloc, cohortAlloc } = res;
+  const totalCourses = COURSES.length;
+  document.getElementById('resultsPanel').style.display = 'block';
+
+  // Compute accessible courses per cohort
+  const numAccess = {};
+  COHORTS.forEach(co => {
+    numAccess[co] = getAccessibleCourses(co).size;
+  });
+
+  const cards = document.getElementById('resultCards');
+  cards.innerHTML = '';
+  let totalZ = 0, totalN = 0;
+  COHORTS.forEach(co => {
+    const z = result[co]; const n = ns[co];
+    totalZ += z; totalN += n;
+    const pct = n > 0 ? Math.round(z / n * 100) : 100;
+    const status = pct >= 100 ? 'safe' : pct >= 80 ? 'warning' : 'danger';
+    const numCourses = Object.keys(cohortAlloc[co] || {}).filter(k => (cohortAlloc[co][k] || 0) > 0).length;
+    const avgL = getCohortAvgLoad(co);
+    cards.innerHTML += `<div class="result-card ${status}">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${CNAMES[co]}</div>
+      <div class="result-num">${z} / ${n}</div>
+      <div class="result-label">students can complete</div>
+      <div class="result-detail">${pct}% ${n - z > 0 ? '\u2014 ' + (n-z) + ' cannot' : '\u2713'}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;">${numCourses} courses used / ${numAccess[co]} accessible (of ${totalCourses})</div>
+      <div style="font-size:10px;color:#aaa;">avg load: ${avgL.toFixed(1)} courses/student</div>
+    </div>`;
+  });
+
+  const govNotes = [];
+  if (res.mandatory) govNotes.push('1 mandatory course (load -1)');
+  if (activeGov.reserve) govNotes.push(`${reserveJ12} seats/course reserved for J27 12mo`);
+  if (activeGov.quotas) {
+    const pS = document.getElementById('quotaPct_S26').value;
+    const p16 = document.getElementById('quotaPct_J27_16').value;
+    const p12 = document.getElementById('quotaPct_J27_12').value;
+    govNotes.push(`Quotas: S26 ${pS}%, J16 ${p16}%, J12 ${p12}%`);
+  }
+  if (res.intensive2) govNotes.push('Qualify via 2 courses');
+  const mandNote = govNotes.length > 0 ? `<div style="font-size:12px;margin-top:4px;">Governance: ${govNotes.join(' + ')}</div>` : '';
+  document.getElementById('totalBar').innerHTML = `<div class="total-bar ${totalZ >= totalN ? 'good' : 'bad'}">
+    Total: ${totalZ} of ${totalN} students can complete (${totalN > 0 ? Math.round(totalZ/totalN*100) : 100}%)
+    ${totalZ < totalN ? ' \u2014 ' + (totalN-totalZ) + ' cannot' : ' \u2014 All served \u2713'}
+    ${mandNote}
+  </div>`;
+
+  const ins = document.getElementById('insights');
+  ins.innerHTML = '';
+  COHORTS.forEach(co => {
+    if (result[co] < ns[co]) {
+      const accessibleCourses = getAccessibleCourses(co);
+      const bottlenecks = Object.keys(cohortAlloc[co] || {}).filter(cid => {
+        const totalAvail = slots.reduce((sum, s, i) => s.c === cid ? sum + Math.min(effCap(s), getQuota(i, co)) : sum, 0);
+        return (cohortAlloc[co][cid] || 0) >= totalAvail;
+      }).map(cid => COURSES.find(x => x.id === cid).name);
+      ins.innerHTML += `<div class="bottleneck"><strong>${CNAMES[co]}</strong>: ${ns[co]-result[co]} student(s) cannot complete.
+        ${accessibleCourses.size} unique courses accessible (of ${totalCourses}).${accessibleCourses.size < 6 ? ' Need more offerings.' : ''}
+        ${bottlenecks.length > 0 ? '<br>Bottleneck: ' + bottlenecks.join(', ') : ''}</div>`;
+      if (accessibleCourses.size <= 5) {
+        ins.innerHTML += `<div class="suggestion"><strong>Suggestion:</strong> Add a course to a period accessible by ${CNAMES[co]} (e.g., Managing AI Responsibly in Oct 27 or Apr 27).</div>`;
+      }
+    }
+  });
+
+  const ab = document.getElementById('allocBody');
+  ab.innerHTML = '';
+  slots.forEach((s, i) => {
+    const cn = COURSES.find(x => x.id === s.c).name;
+    const ec = effCap(s);
+    const used = COHORTS.reduce((sum, co) => sum + (alloc[i][co] || 0), 0);
+    ab.innerHTML += `<tr><td>${cn}</td><td style="font-size:11px">${s.p}</td><td>${ec}</td>
+      ${COHORTS.map(co => {
+        const v = alloc[i][co] || 0;
+        const q = s.q[co];
+        const ql = q !== null && q > 0 ? ` <span style="font-size:10px;color:#999">/${q}</span>` : '';
+        return `<td><span class="alloc-val ${v>0?'active':'zero'}">${v}</span>${ql}</td>`;
+      }).join('')}
+      <td><strong>${used}</strong></td>
+      <td style="color:${ec-used<=0?'#dc2626':'#16a34a'}">${ec-used}</td></tr>`;
+  });
+
+  const cb = document.getElementById('courseBody');
+  cb.innerHTML = '';
+  let totals = { S26:0, J27_12:0, J27_16:0 };
+  COURSES.forEach(course => {
+    const vals = {};
+    let ct = 0;
+    COHORTS.forEach(co => { vals[co] = (cohortAlloc[co] && cohortAlloc[co][course.id]) || 0; totals[co] += vals[co]; ct += vals[co]; });
+    if (ct > 0 || slots.some(s => s.c === course.id)) {
+      cb.innerHTML += `<tr><td>${course.name}</td>
+        ${COHORTS.map(co => `<td><span class="alloc-val ${vals[co]>0?'active':'zero'}">${vals[co]}</span></td>`).join('')}
+        <td><strong>${ct}</strong></td></tr>`;
+    }
+  });
+  cb.innerHTML += `<tr style="font-weight:700;border-top:2px solid #1F4E79"><td>Total enrollments</td>
+    ${COHORTS.map(co => `<td>${totals[co]} (need ${Math.ceil(ns[co]*getCohortAvgLoad(co))})</td>`).join('')}
+    <td>${COHORTS.reduce((s,co) => s + totals[co], 0)}</td></tr>`;
+
+  // Fairness bar
+  const fb = document.getElementById('fairnessBar');
+  fb.innerHTML = '';
+  const rates = {};
+  let minRate = 100, maxRate = 0;
+  COHORTS.forEach(co => {
+    const r = ns[co] > 0 ? Math.round(result[co] / ns[co] * 100) : 100;
+    rates[co] = r;
+    if (r < minRate) minRate = r;
+    if (r > maxRate) maxRate = r;
+  });
+  const gap = maxRate - minRate;
+  const seatsPerStudent = {};
+  COHORTS.forEach(co => {
+    const totalEnroll = Object.values(cohortAlloc[co] || {}).reduce((s, v) => s + v, 0);
+    seatsPerStudent[co] = ns[co] > 0 ? (totalEnroll / ns[co]).toFixed(1) : '\u2014';
+  });
+
+  if (res.mode === 'fair') {
+    fb.innerHTML = `
+      <div style="background:#f5f3ff;border:2px solid #7c3aed;border-radius:10px;padding:16px;margin-top:12px;">
+        <div style="font-size:15px;font-weight:700;color:#7c3aed;margin-bottom:8px;">\u2696\uFE0F Fairness Mode \u2014 Equalized at ${res.fairRate}% completion</div>
+        <div style="font-size:13px;color:#555;margin-bottom:12px;">Every cohort guaranteed at least ${res.fairRate}% of students can complete the concentration.</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #ddd;font-weight:600;color:#555;">
+            <td style="padding:6px">Cohort</td><td style="text-align:center;padding:6px">Completion</td><td style="text-align:center;padding:6px">Courses Available</td><td style="text-align:center;padding:6px">Avg Load</td><td style="text-align:center;padding:6px">Seats/Student</td></tr>
+          ${COHORTS.map(co => `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px;font-weight:600">${CNAMES[co]}</td>
+            <td style="text-align:center;padding:6px;color:${rates[co]>=100?'#16a34a':'#dc2626'};font-weight:700">${rates[co]}%</td>
+            <td style="text-align:center;padding:6px">${numAccess[co]} of ${totalCourses}</td>
+            <td style="text-align:center;padding:6px">${getCohortAvgLoad(co).toFixed(1)}</td>
+            <td style="text-align:center;padding:6px">${seatsPerStudent[co]}</td>
+          </tr>`).join('')}
+        </table>
+        ${gap > 10 ? `<div style="margin-top:10px;padding:8px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#dc2626;">\u26A0\uFE0F Gap of ${gap}pp between highest and lowest cohort completion rate \u2014 structural inequity detected.</div>` : ''}
+      </div>`;
+  } else {
+    fb.innerHTML = `
+      <div style="background:#f0f4ff;border:1px solid #93c5fd;border-radius:10px;padding:16px;margin-top:12px;">
+        <div style="font-size:14px;font-weight:600;color:#1F4E79;margin-bottom:8px;">\uD83D\uDCCA Fairness Check (Maximize Mode)</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #ddd;font-weight:600;color:#555;">
+            <td style="padding:6px">Cohort</td><td style="text-align:center;padding:6px">Completion</td><td style="text-align:center;padding:6px">Courses Available</td><td style="text-align:center;padding:6px">Avg Load</td><td style="text-align:center;padding:6px">Seats/Student</td></tr>
+          ${COHORTS.map(co => `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px;font-weight:600">${CNAMES[co]}</td>
+            <td style="text-align:center;padding:6px;color:${rates[co]>=100?'#16a34a':'#dc2626'};font-weight:700">${rates[co]}%</td>
+            <td style="text-align:center;padding:6px">${numAccess[co]} of ${totalCourses}</td>
+            <td style="text-align:center;padding:6px">${getCohortAvgLoad(co).toFixed(1)}</td>
+            <td style="text-align:center;padding:6px">${seatsPerStudent[co]}</td>
+          </tr>`).join('')}
+        </table>
+        ${gap > 10 ? `<div style="margin-top:10px;padding:8px 12px;background:#fef2f2;border-radius:6px;font-size:12px;color:#dc2626;">\u26A0\uFE0F Gap of ${gap}pp between cohorts \u2014 try "Equalize Fairness" to balance.</div>` : gap > 0 ? `<div style="margin-top:10px;padding:8px 12px;background:#fefce8;border-radius:6px;font-size:12px;color:#92400e;">Gap: ${gap}pp between cohorts. Click "Equalize Fairness" for balanced allocation.</div>` : `<div style="margin-top:10px;padding:8px 12px;background:#dcfce7;border-radius:6px;font-size:12px;color:#16a34a;">\u2713 All cohorts have equal completion rates \u2014 no fairness concern.</div>`}
+      </div>`;
+  }
+
+  document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Init
+initCalendar();
+rebuildSlots();
+renderCalendar();
+renderSlotTable();
+updateDerived();
+</script>
+</body>
+</html>
