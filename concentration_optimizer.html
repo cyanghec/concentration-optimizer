@@ -107,6 +107,7 @@
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="aibdm" onclick="toggleFix(this)">AIBDM: Apr-Jun &rarr; Oct</button>
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="ucai" onclick="toggleFix(this)">UCAI: Oct &rarr; Jan-Mar</button>
       <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="aifu_feb" onclick="toggleFix(this)">AIFU: + add Feb intensive</button>
+      <button class="scenario-btn" style="border-color:#16a34a;color:#16a34a;--toggle-color:#16a34a;" data-fix="sct" onclick="toggleFix(this)">SCT: + add Apr intensive</button>
     </div>
     <div style="font-size:11px;font-weight:600;color:#059669;margin:10px 0 6px;">Governance <span style="font-weight:400;color:#888;">(toggle any)</span>:</div>
     <div class="scenario-bar" id="govBar">
@@ -392,9 +393,7 @@ function initCalendar() {
   calendar.dddm.janmar27 = true;
   calendar.pidt.aprjun27 = true;
   calendar.aibdm.aprjun27 = true;
-  calendar.sct.apr27 = true;
   calendar.gaim.apr27 = true;
-  calendar.sct.apr28 = true;
   calendar.gaim.apr28 = true;
   calendar.ucai.oct27 = true;
   calendar.pidt.dec27 = true;
@@ -600,7 +599,7 @@ function setLoadInputs(co, n3, n4, n5, n6) {
 
 // ===== COMPOSABLE SCENARIO STATE =====
 let activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
-let activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false };
+let activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false, sct: false };
 let activeGov = { mandatory: false, reserve: false, quotas: false, caps: false, intensive3: false };
 
 function toggleStress(btn) {
@@ -680,6 +679,10 @@ function applyCombo() {
     calendar.aifu.feb27 = true;
     calendar.aifu.feb28 = true;
   }
+  if (activeFixes.sct) {
+    calendar.sct.apr27 = true;
+    calendar.sct.apr28 = true;
+  }
 
   // Apply governance
   if (activeGov.mandatory) mandatoryMode = true;
@@ -742,7 +745,7 @@ function applyCombo() {
   const anyStress = Object.values(activeStress).some(v => v);
   if (!anyStress) parts.push('Current Setup');
   Object.keys(activeStress).forEach(k => { if (activeStress[k]) parts.push(stressLabels[k]); });
-  const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', aifu_feb:'AIFU+Feb' };
+  const fixLabels = { mair:'MAIR→Oct', aibdm:'AIBDM→Oct', ucai:'UCAI→Jan-Mar', aifu_feb:'AIFU+Feb', sct:'+SCT Apr' };
   Object.keys(activeFixes).forEach(k => { if (activeFixes[k]) parts.push(fixLabels[k]); });
   if (activeGov.mandatory) parts.push('Mandatory');
   if (activeGov.reserve) parts.push(`Reserve ${reserveJ12} seats`);
@@ -766,7 +769,7 @@ function applyCombo() {
 function resetScenario() {
   // Reset all toggles
   activeStress = { j26_flood: false, j12_all: false, high_uptake: false };
-  activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false };
+  activeFixes = { mair: false, aibdm: false, ucai: false, aifu_feb: false, sct: false };
   activeGov = { mandatory: false, reserve: false, quotas: false, caps: false, intensive3: false };
   document.getElementById('reservePanel').style.display = 'none';
   document.getElementById('quotaPanel').style.display = 'none';
