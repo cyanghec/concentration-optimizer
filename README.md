@@ -93,9 +93,9 @@ $$\widetilde{\text{Cap}}_s = \text{floor}(\overline{\text{Cap}}_s \cdot \text{Po
 
 | Condition | Quota limit |
 |-----------|-------------|
-| Cohort blocked from slot ( $Q_{s,c} = 0$ ) | $\bar{Q}_{s,c} = 0$ |
-| Quota governance active | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \text{floor}(\widetilde{\text{Cap}}_s \cdot \alpha_c))$ |
-| Otherwise | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ |
+| Cohort blocked from slot | 0 |
+| Quota governance active | min(quota, floor(effective capacity × cohort share)) |
+| Otherwise | min(quota, effective capacity) |
 
 Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27 16mo up to 12, and J27 12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
 
@@ -103,9 +103,9 @@ Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 
 
 | Condition | Reservation-adjusted limit |
 |-----------|---------------------------|
-| $c$ = J27 12mo | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ — full capacity |
-| Slot is J12-accessible, $c \neq$ J12 | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s - R)$ — reduced by $R$ |
-| Slot not J12-accessible | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ — unaffected |
+| J27 12mo | min(quota, effective capacity) — full access |
+| Other cohort, J12-accessible slot | min(quota, effective capacity − R) — reduced |
+| Non-J12 slot | min(quota, effective capacity) — unaffected |
 
 Intuition (reservation): if a slot has 50 effective seats and $R = 12$, then S26 and J27 16mo can each use up to 38, while J27 12mo sees the full 50. Combined, non-J12 cohorts can never take more than 38 — guaranteeing at least 12 remain for J12.
 
