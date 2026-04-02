@@ -50,14 +50,14 @@ $$\overline{\text{Cap}}_s = \max\!\Big(0,\; \text{Cap}_s - \text{Prev}_s\Big)$$
 
 **Popularity-adjusted capacity**:
 
-$$\widetilde{\text{Cap}}_s = \Big\lfloor \overline{\text{Cap}}_s \cdot \text{Pop}_k \Big\rfloor \quad \text{where } s = (k, p)$$
+$$\widetilde{\text{Cap}}_s = \text{floor}(\overline{\text{Cap}}_s \cdot \text{Pop}_k) \quad \text{where } s = (k, p)$$
 
 **Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
 
 | Condition | Quota limit |
 |-----------|-------------|
 | Cohort blocked from slot ( $Q_{s,c} = 0$ ) | $\bar{Q}_{s,c} = 0$ |
-| Quota governance active | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \lfloor \widetilde{\text{Cap}}_s \cdot \alpha_c \rfloor)$ |
+| Quota governance active | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \text{floor}(\widetilde{\text{Cap}}_s \cdot \alpha_c))$ |
 | Otherwise | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ |
 
 Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27 16mo up to 12, and J27 12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
@@ -103,7 +103,7 @@ $$n_c \;\leq\; N_c \qquad \forall\; c \in \mathcal{C}$$
 
 **4. Course load**: Each cohort's total seat-enrollments must meet the average load requirement:
 
-$$\sum_{s \in \mathcal{S}_c} x_{s,c} \;\geq\; \lceil L_c \cdot n_c \rceil \qquad \forall\; c \in \mathcal{C}$$
+$$\sum_{s \in \mathcal{S}_c} x_{s,c} \geq \text{ceil}(L_c \cdot n_c) \qquad \forall c \in \mathcal{C}$$
 
 **5. Per-course cap**: No more students in a course than are served (a student takes a course at most once):
 
@@ -135,11 +135,11 @@ Instead of maximizing total served, find the highest **completion percentage** $
 
 $$P^* = \max \; P$$
 
-$$\text{subject to:} \quad n_c \;\geq\; \Big\lfloor \tfrac{P}{100} \cdot N_c \Big\rfloor \qquad \forall\; c \in \mathcal{C}$$
+$$\text{subject to:} \quad n_c \geq \text{floor}(P / 100 \cdot N_c) \qquad \forall c \in \mathcal{C}$$
 
 plus all constraints (1)–(5).
 
-Equivalently: each cohort is **capped at its fair-share floor** $\lfloor \frac{P}{100} \cdot N_c \rfloor$, preventing early cohorts from consuming capacity that later cohorts need.
+Equivalently: each cohort is **capped at its fair-share floor** $\text{floor}(P / 100 \cdot N_c)$, preventing early cohorts from consuming capacity that later cohorts need.
 
 The tool finds $P^*$ via binary search: for each candidate $P$, it runs the sequential solver with each cohort capped at its floor and checks feasibility.
 
