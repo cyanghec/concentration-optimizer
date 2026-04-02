@@ -54,15 +54,23 @@ $$\widetilde{\text{Cap}}_s = \Big\lfloor \overline{\text{Cap}}_s \cdot \text{Pop
 
 **Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
 
-$$\bar{Q}_{s,c} = \begin{cases} 0 & \text{if } Q_{s,c} = 0 \text{ (cohort blocked from slot)} \\ \min\!\Big(Q_{s,c},\; \lfloor \widetilde{\text{Cap}}_s \cdot \alpha_c \rfloor\Big) & \text{if quota governance is active} \\ \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big) & \text{otherwise (no quota limit)} \end{cases}$$
+| Condition | Quota limit |
+|-----------|-------------|
+| Cohort blocked from slot ( $Q_{s,c} = 0$ ) | $\bar{Q}_{s,c} = 0$ |
+| Quota governance active | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \lfloor \widetilde{\text{Cap}}_s \cdot \alpha_c \rfloor)$ |
+| Otherwise | $\bar{Q}_{s,c} = \min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ |
 
-Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27\_16mo up to 12, and J27\_12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
+Intuition (quotas): if a slot has 50 effective seats and $\alpha = (0.50, 0.25, 0.25)$, then S26 can claim up to 25, J27 16mo up to 12, and J27 12mo up to 12 — regardless of enrollment order. Blocked cohorts (quota = 0) remain blocked.
 
 **Seat reservation** (alternative to quotas): Instead of splitting capacity, subtract $R$ seats from non-J12 cohorts in J12-accessible slots:
 
-$$\bar{Q}_{s,c}^{\text{res}} = \begin{cases} \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big) & \text{if } c = \text{J27\_12mo} \\ \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s - R\Big) & \text{if } s \in \mathcal{S}_{\text{J27\_12mo}} \\ \min\!\Big(Q_{s,c},\; \widetilde{\text{Cap}}_s\Big) & \text{otherwise} \end{cases}$$
+| Condition | Reservation-adjusted limit |
+|-----------|---------------------------|
+| $c$ = J27 12mo | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ — full capacity |
+| Slot is J12-accessible, $c \neq$ J12 | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s - R)$ — reduced by $R$ |
+| Slot not J12-accessible | $\min(Q_{s,c},\; \widetilde{\text{Cap}}_s)$ — unaffected |
 
-Intuition (reservation): if a slot has 50 effective seats and $R = 12$, then S26 and J27\_16mo can each use up to 38, while J27\_12mo sees the full 50. Combined, non-J12 cohorts can never take more than 38 — guaranteeing at least 12 remain for J12.
+Intuition (reservation): if a slot has 50 effective seats and $R = 12$, then S26 and J27 16mo can each use up to 38, while J27 12mo sees the full 50. Combined, non-J12 cohorts can never take more than 38 — guaranteeing at least 12 remain for J12.
 
 **Reservation vs Quotas**: Reservation is more efficient because it only constrains cohorts that compete with J12 and doesn't waste capacity on cohorts with abundant exclusive slots. Under Perfect Storm: reservation achieves 140/184 (76%) vs quotas at 110/184 (60%).
 
