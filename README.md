@@ -220,23 +220,25 @@ Move courses to periods that improve J27 12mo access:
 
 Lowering the qualification bar from ~3.7 to 2 courses is the single most impactful governance lever. Below shows the minimum configuration needed to serve everyone under each scenario.
 
-| Scenario | Qualify via 2 | + Reserve | + Schedule Fixes | Result |
+| Scenario | Qualify via 2 | + Reserve | + Schedule Fix | Result |
 |----------|:---:|:---:|:---:|--------|
 | **Current setup** (104 students) | — | — | — | 95/104 (J12: 3/12) |
 | **Current setup** | ✓ | — | — | **104/104 (100%)** |
 | **High uptake** (180 students) | ✓ | — | — | **180/180 (100%)** |
 | **Everyone joins** (233 students) | ✓ | — | — | 210/233 (J12: 6/29) |
 | **Everyone joins** | ✓ | R=12 | — | 230/233 (J12: 26/29) |
+| **Everyone joins** | ✓ | R=12 | Any one of MAIR/AIBDM/SCT | **233/233 (100%)** |
 | **Everyone joins** | ✓ | R=15 | — | **233/233 (100%)** |
-| **Everyone joins** | ✓ | R=12 | All fixes | **233/233 (100%)** |
-| **Everyone + J26 Flood** | ✓ | — | — | 173/233 (J12: 0/29, S26: 119/150) |
+| **Everyone + J26 Flood** | ✓ | R=12 | — | 173/233 (J12: 24/29, S26: 95/150) |
+| **Everyone + J26 Flood** | ✓ | R=12 | SCT | 198/233 (J12: 29/29, S26: 115/150) |
 | **Everyone + J26 Flood** | ✓ | R=12 | All fixes | 210/233 (J12: 29/29, S26: 127/150) |
 
 **Key takeaways:**
 - **Current setup**: "Qualify via 2" alone achieves 100%. No other levers needed.
-- **High uptake**: "Qualify via 2" alone achieves 100%. Simultaneous enrollment means J12 is no longer shut out.
-- **Everyone joins**: "Qualify via 2" + Reserve 15 seats = 100%, or Reserve 12 + all schedule fixes = 100%.
-- **Everyone + J26 Flood** (worst case): Even with all levers, 100% is not achievable. S26 drops to 127/150. J12 can be fully served with reserve + fixes.
+- **High uptake**: "Qualify via 2" alone achieves 100%.
+- **Everyone joins**: "Qualify via 2" + R=12 + any single schedule fix (MAIR→Oct, AIBDM→Oct, or SCT→Apr) = 100%. Alternatively, R=15 alone with Q2 = 100%.
+- **Everyone + J26 Flood** (worst case): Even with all levers, 100% is not achievable. Best: 210/233 (S26: 127/150). SCT alone is the most impactful single fix.
+- **UCAI→Jan-Mar hurts J12** — it removes UCAI from Oct 27, which J12 needs. Avoid using it alone.
 
 ### The Structural Argument
 
