@@ -12,14 +12,9 @@ The Tech & AI concentration serves three cohorts with different enrollment timel
 | **J27 12mo** | Starts Jan 2027, graduates Dec 2027 | Apr 27, Oct 27, Dec 27 |
 | **J27 16mo** | Starts Jan 2027, graduates Apr 2028 | Apr 27, Oct 27, Dec 27, Jan-Mar 28, Feb 28, Apr 28 |
 
-Enrollment is **sequential**: S26 enrolls first, then J27 16mo, then J27 12mo. Later cohorts get whatever capacity remains.
+**S26 enrolls first**, then J27 16mo and J27 12mo enroll **simultaneously**. The solver models this as S26 first (greedy), then J16/J12 sequentially as an approximation of their simultaneous enrollment.
 
-**Period constraints** (per admin rolling rule): each cohort skips its first intensive after enrollment, then is eligible for all subsequent intensives until graduation. This means:
-- Sep intake: blocked from Oct intensive (first after enrollment), open from Dec onward
-- Jan intake: blocked from Feb intensive (first after enrollment), open from Apr onward
-- In year 2, the pattern repeats with cohorts shifted: S26 and J27 become "established" and regain access to Oct and Feb respectively
-
-This gives J27 12mo just 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They enroll last and compete for seats with larger cohorts.
+**The structural tension**: J27 12mo has only 3 intensive periods (Apr 27, Oct 27, Dec 27) and 4 accessible courses. They compete for seats with larger cohorts.
 
 ## How the Math Works
 
@@ -108,11 +103,11 @@ $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \for
 
 Note: Cohort quotas are handled within $\bar{Q}_{s,c}$ — no separate constraint needed. The quota percentages $\alpha_c$ are tunable in the tool (default: S26 50%, J16 25%, J12 25%).
 
-### Sequential Enrollment Extension
+### Greedy Sequential Solver
 
-The pure LP above assumes simultaneous optimization. In practice, enrollment is **sequential** — S26 enrolls first, then J27\_16mo, then J27\_12mo. Each later cohort sees only the residual capacity.
+S26 enrolls first, then J27\_16mo and J27\_12mo enroll simultaneously. The solver approximates this as a **greedy sequential heuristic** — processing cohorts in order $\sigma = (c_1, c_2, c_3)$ = (S26, J27\_16mo, J27\_12mo), where each cohort maximizes its own allocation given remaining capacity. The J16/J12 sequential ordering is a simplification of their simultaneous enrollment.
 
-This is modeled as a **sequence of LPs**, one per cohort in enrollment order $\sigma = (c_1, c_2, c_3)$:
+This is modeled as a **sequence of sub-problems**, one per cohort:
 
 **Stage $t$** (for cohort $c_t$): Solve
 
@@ -177,36 +172,17 @@ Seats already consumed by non-concentration students in year 1 slots (per admin 
 
 Year 2 slots (Oct 27, Dec 27, etc.) have no previous consumption — they are fresh offerings.
 
-## Breaking Points
+## Stress Scenarios
 
-### Under Current Setup (70 S26, 12 J12, 22 J16 = 104 total)
+| Scenario | S26 | J12 | J16 | Total | Key Risk |
+|----------|-----|-----|-----|-------|----------|
+| **Current setup** | 70 | 12 | 22 | 104 | J12 gets 0/12 without governance |
+| **J26 Flood** | 70 | 12 | 22 | 104 | Previous cohort consumes year-1 slots |
+| **All J12 join** | 70 | 29 | 22 | 121 | 29 students competing for 4 courses |
+| **High uptake** | 110 | 25 | 45 | 180 | Demand exceeds capacity |
+| **Everyone joins** | 150 | 29 | 54 | 233 | Maximum possible demand |
 
-All 104 students can complete. The system works — but with little margin.
-
-### Stress Factor: J26 Flood
-
-Previous cohort (J26 16mo) floods shared first-year courses, consuming 34-45 seats per slot in Dec 26, 40 seats in Jan-Mar 27 and Feb 27. This dramatically reduces effective capacity for concentration students.
-
-### Stress Factor: All J27 12mo Join
-
-All 29 J27 12mo students take the concentration (vs. default 12). They only have 4 intensive periods with ~6 courses accessible. At 29 students needing ~3.7 courses each = ~107 seat-enrollments from just ~6 slots with shared capacity.
-
-### Stress Factor: High Uptake
-
-Concentration becomes popular: S26 rises from 70 to 110, J27 12mo from 12 to 25, J27 16mo from 22 to 45. Total demand jumps from 104 to 180 students.
-
-### Perfect Storm (All 3 Combined)
-
-184 students compete for limited seats. Results:
-
-| Cohort | Served | Rate |
-|--------|--------|------|
-| S26 | ~78/110 | 71% |
-| J27 12mo | **0/29** | **0%** |
-| J27 16mo | 45/45 | 100% |
-| **Total** | **~123/184** | **67%** |
-
-**J27 12mo is completely shut out.** S26 and J27 16mo consume all shared intensive capacity before J27 12mo can enroll.
+Stress factors stack (except "Everyone joins" which supersedes "All J12 join" and "High uptake").
 
 ## Solutions
 

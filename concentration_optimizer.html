@@ -816,7 +816,8 @@ function resetScenario() {
 }
 
 // ========== ENROLLMENT ORDER ==========
-// Always sequential: S26 first, then J27_16, then J27_12
+// S26 enrolls first, then J27_16 and J27_12 simultaneously
+// Solver processes S26 first, then J16/J12 are modeled sequentially as an approximation
 const ENROLL_ORDER = ['S26', 'J27_16', 'J27_12'];
 
 // ========== SOLVER ==========
