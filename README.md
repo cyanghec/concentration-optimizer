@@ -239,11 +239,11 @@ $$n_c \;\leq\; N_c \qquad \forall\; c \in \mathcal{C}$$
 
 **4. Course load**: Each cohort's total seat-enrollments must meet the average load requirement:
 
-$$\sum_{s \in \mathcal{S}_c} x_{s,c} \geq \text{ceil}(L_c \cdot n_c) \qquad \forall c \in \mathcal{C}$$
+$\sum_{s \in \mathcal{S}_c} x_{s,c} \geq \text{ceil}(L_c \cdot n_c) \qquad \forall c \in \mathcal{C}$
 
 **5. Per-course cap**: No more students in a course than are served (a student takes a course at most once):
 
-$$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$$
+$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \forall\; c \in \mathcal{C},\; k \in \mathcal{K}_c$
 
 ### Two-Phase Greedy Solver
 
@@ -251,7 +251,7 @@ $$\sum_{\substack{s = (k,p) \in \mathcal{S}_c}} x_{s,c} \;\leq\; n_c \qquad \for
 
 **Phase 2 — J16 + J12 (simultaneous):** With remaining capacity after S26, try both orderings (J16→J12 and J12→J16). Each ordering solves cohorts sequentially with reduced capacity:
 
-$$\widetilde{\text{Cap}}_s^{(t)} = \widetilde{\text{Cap}}_s - \sum_{\tau < t} x_{s, c_\tau}^* \qquad \forall\; s \in \mathcal{S}$$
+$\widetilde{\text{Cap}}_s^{(t)} = \widetilde{\text{Cap}}_s - \sum_{\tau < t} x_{s, c_\tau}^* \qquad \forall\; s \in \mathcal{S}$
 
 Keep whichever ordering produces the higher total $n_{J16} + n_{J12}$.
 
