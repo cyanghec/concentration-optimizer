@@ -164,12 +164,12 @@ Governance levers (reservation, caps) should target S26's intensive consumption,
 
 | Symbol | Definition |
 |--------|-----------|
-| **C** | Set of cohorts: {S26, J27\_16mo, J27\_12mo} |
+| **C** | Set of cohorts: {S26, J27 16mo, J27 12mo} |
 | **K** | Set of courses: {UCAI, PIDT, AIFU, MAIR, TESP, DDDM, AIBDM, SCT, GAIM} |
 | **P** | Set of periods: {Dec26, Jan-Mar27, Feb27, Apr-Jun27, Apr27, Oct27, Dec27, Jan-Mar28, Feb28, Apr28} |
 | **S** | Set of slots: S ⊆ K × P, each slot s = (k, p) is a course k offered in period p |
-| **S\_c** ⊆ S | Slots accessible to cohort c (determined by timeline and format) |
-| **K\_c** ⊆ K | Courses accessible to cohort c: K\_c = {k : ∃ p such that (k,p) ∈ S\_c} |
+| **S(c)** ⊆ S | Slots accessible to cohort c (determined by timeline and format) |
+| **K(c)** ⊆ K | Courses accessible to cohort c: K(c) = {k : ∃ p such that (k,p) ∈ S(c)} |
 
 ### Parameters
 
@@ -178,11 +178,11 @@ Governance levers (reservation, caps) should target S26's intensive consumption,
 | **Cap(s)** | Raw seat capacity of slot s |
 | **Prev(s)** | Seats already consumed by non-concentration students (prior MBA cohorts) |
 | **Pop(k)** ∈ [0, 1] | Popularity factor for course k (scales effective capacity) |
-| **Q(s,c)** ≥ 0 or ∞ | Quota: max seats cohort c may use in slot s. Q(s,c) = 0 if s ∉ S\_c |
-| **N\_c** | Size of cohort c (students in concentration) |
-| **L\_c** | Average course load for cohort c (courses needed to qualify) |
-| **R** ≥ 0 | Seats reserved per course for J27\_12mo (governance lever, default 0) |
-| **α\_c** ∈ [0, 1] | Quota percentage for cohort c (governance lever; Σ α\_c = 1) |
+| **Q(s,c)** ≥ 0 or ∞ | Quota: max seats cohort c may use in slot s. Q(s,c) = 0 if s ∉ S(c) |
+| **N(c)** | Size of cohort c (students in concentration) |
+| **L(c)** | Average course load for cohort c (courses needed to qualify) |
+| **R** ≥ 0 | Seats reserved per course for J27 12mo (governance lever, default 0) |
+| **α(c)** ∈ [0, 1] | Quota percentage for cohort c (governance lever; Σ α(c) = 1) |
 
 ### Derived Quantities
 
@@ -194,7 +194,7 @@ Governance levers (reservation, caps) should target S26's intensive consumption,
 
 > **AdjCap(s) = floor(EffCap(s) · Pop(k))** where s = (k, p)
 
-**Cohort quota** (maximum seats cohort $c$ can claim in slot $s$):
+**Cohort quota** (maximum seats cohort c can claim in slot s):
 
 | Condition | Quota limit |
 |-----------|-------------|
@@ -215,13 +215,13 @@ Governance levers (reservation, caps) should target S26's intensive consumption,
 | Variable | Domain | Meaning |
 |----------|--------|---------|
 | **x(s,c)** ≥ 0, integer | for each slot s accessible to cohort c | Seats allocated to cohort c in slot s |
-| **n\_c** ≥ 0, integer | for each cohort c | Number of students served in cohort c |
+| **n(c)** ≥ 0, integer | for each cohort c | Number of students served in cohort c |
 
 ### Objective
 
 **Maximize total students served:**
 
-> **Maximize Σ n\_c** over all cohorts c
+> **Maximize Σ n(c)** over all cohorts c
 
 ### Constraints
 
@@ -235,37 +235,37 @@ Governance levers (reservation, caps) should target S26's intensive consumption,
 
 **3. Cohort size**: Cannot serve more students than are in the cohort:
 
-> For each cohort c: **n\_c ≤ N\_c**
+> For each cohort c: **n(c) ≤ N(c)**
 
 **4. Course load**: Each cohort's total seat-enrollments must meet the average load requirement:
 
-> For each cohort c: **Σ x(s,c)** over slots s accessible to c **≥ ceil(L\_c · n\_c)**
+> For each cohort c: **Σ x(s,c)** over slots s accessible to c **≥ ceil(L(c) · n(c))**
 
 **5. Per-course cap**: No more students in a course than are served (a student takes a course at most once):
 
-> For each cohort c and course k: **Σ x(s,c)** over slots s = (k, p) accessible to c **≤ n\_c**
+> For each cohort c and course k: **Σ x(s,c)** over slots s = (k, p) accessible to c **≤ n(c)**
 
 ### Two-Phase Greedy Solver
 
-**Phase 1 — S26 (greedy):** Solve for S26 alone, maximizing n\_S26 subject to constraints (1)–(5), consuming capacity from each slot.
+**Phase 1 — S26 (greedy):** Solve for S26 alone, maximizing n(S26) subject to constraints (1)–(5), consuming capacity from each slot.
 
 **Phase 2 — J16 + J12 (simultaneous):** With remaining capacity after S26, try both orderings (J16→J12 and J12→J16). Each ordering solves cohorts sequentially with reduced capacity:
 
-> **Cap'(s, t) = Cap(s) − Σ x(s, c\_τ)\*** for all prior cohorts τ < t
+> **Cap'(s, t) = Cap(s) − Σ x(s, cτ)*** for all prior cohorts τ < t
 
-Keep whichever ordering produces the higher total n\_J16 + n\_J12.
+Keep whichever ordering produces the higher total n(J16) + n(J12).
 
-**Implementation note**: Each cohort is solved via binary search over n\_c with water-fill allocation (greedy), rather than a general LP solver.
+**Implementation note**: Each cohort is solved via binary search over n(c) with water-fill allocation (greedy), rather than a general LP solver.
 
 ### Fairness Mode (Equalize)
 
-Instead of maximizing total served, find the highest **completion percentage P\*** achievable by all cohorts simultaneously:
+Instead of maximizing total served, find the highest **completion percentage P*** achievable by all cohorts simultaneously:
 
-> **Maximize P** subject to: n\_c ≥ floor(P / 100 · N\_c) for all cohorts c
+> **Maximize P** subject to: n(c) ≥ floor(P / 100 · N(c)) for all cohorts c
 
 plus all constraints (1)–(5).
 
-Equivalently: each cohort is **capped at its fair-share floor** floor(P / 100 · N\_c), preventing early cohorts from consuming capacity that later cohorts need.
+Equivalently: each cohort is **capped at its fair-share floor** floor(P / 100 · N(c)), preventing early cohorts from consuming capacity that later cohorts need.
 
 The tool finds P\* via binary search: for each candidate P, it runs the two-phase solver with each cohort capped at its floor and checks feasibility.
 
